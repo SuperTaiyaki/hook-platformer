@@ -12,7 +12,7 @@ bg = pygame.Color(0x80808000)
 fg = pygame.Color(0xFFFFFFFF)
 mg = pygame.Color(0xff0000ff)
 color2 = pygame.Color(0x00ff00ff)
-GRAVITY=-10.0
+GRAVITY=-50.0
 STRETCH_FACTOR=200.0
 
 dots = []
@@ -25,7 +25,7 @@ class Hook(object):
         self.stuck = False
         self.release = False
         self.nodes = []
-        self.idle = True
+        self.idle = True # Cable not fired
         self.world = world
 
     def fire(self, dir):
@@ -34,14 +34,15 @@ class Hook(object):
         self.pos = [self.origin.pos[0], self.origin.pos[1]]
         self.nodes = []
         self.node_angles = []
-        self.release = True
-        self.pull = False
-        self.stuck = False
+        self.release = True # Launch stage, don't delete the hook
+        self.pull = False # Retracting cable (RMB)
+        self.stuck = False # Hook has latched onto something
         self.angle_hook = 0
         self.angle_origin = 0
         self.pull_force = 4000
         self.slack_length = 0
         self.real_length = 0 # tension factor
+        self.brake = False # Allow more cable to pull? (one way, always allows cable to shrink)
 
     def detach(self):
         self.stuck = False
@@ -62,17 +63,7 @@ class Hook(object):
             self.dir[1] -= GRAVITY * ts
             #print "Before: %f %f" % (self.dir[0], self.dir[1])
             # This is going to do weird things at low framerate
-            if self.pull:
-                """
-                ### Pure tension-based system - oscillates
-                if self.real_length > self.slack_length:
-                    stretch_force = self.real_length - self.slack_length * STRETCH_FACTOR
-                    ln = self.last_node()
-                    cable_len = math.hypot(self.pos[0]-ln[0], self.pos[1]-ln[1])
-                    vec_cable = ((self.pos[0] - ln[0])/cable_len, (self.pos[1] - ln[1])/cable_len)
-                    self.dir[0] += stretch_force * vec_cable[0] * ts
-                    self.dir[1] += stretch_force * vec_cable[1] * ts
-                """
+            if self.pull or self.brake:
 
                 # TODO: IMPLEMENT THIS BIT
 # 			Calculate rate at which player is moving away from node
@@ -104,7 +95,7 @@ class Hook(object):
                 angle = angle_diff(vec_cable, vec_movement)
 
                 if math.fabs(angle) < math.pi/2:
-                    print "Outside pull"
+                    #print "Outside pull"
 
                     # remove the outward component of motion
                     # Inject a force such that the velocity along ln drops to 0
@@ -123,22 +114,52 @@ class Hook(object):
                     #self.dir[1] -= self.dir[1] * 0.5 * ts
 
                     # Outwards force should now be zeroed, fixed pull inwards
-                    #self.dir[0] -= vec_cable[0] * self.pull_force * ts
-                    #self.dir[1] -= vec_cable[1] * self.pull_force * ts
+                    if self.pull:
+                        self.dir[0] -= vec_cable[0] * self.pull_force * ts
+                        self.dir[1] -= vec_cable[1] * self.pull_force * ts
 
                     # TODO: factor in player velocity 
                 else:
-                    inward_component = -math.cos(angle) * math.hypot(self.dir[0], self.dir[1])
-                    if inward_component < self.pull_force:
-                        # TODO: cap the acceleration and speed (don't let it overshoot)
-                        # Sort of modelling slack here... not good
-                        #self.dir[0] -= vec_cable[0] * self.pull_force * ts
-                        #self.dir[1] -= vec_cable[1] * self.pull_force * ts
-                        pass
-                    print "Acceleration pull"
+                    if self.pull:
+                        inward_component = -math.cos(angle) * math.hypot(self.dir[0], self.dir[1])
+                        if inward_component < self.pull_force:
+                            # TODO: cap the acceleration and speed (don't let it overshoot)
+                            # Sort of modelling slack here... not good
+                            self.dir[0] -= vec_cable[0] * self.pull_force * ts
+                            self.dir[1] -= vec_cable[1] * self.pull_force * ts
+                        #print "Acceleration pull"
                 #self.pull_force += 500*ts
                 #print self.pull_force
 
+            # Hook end collision checking
+            hook_collision = self.world.collide_line(self.pos, (self.pos[0] + self.dir[0] * ts, self.pos[1] + self.dir[1] * ts))
+            #print "start %s end %s" % (self.pos, (self.pos[0] + self.dir[0] * ts, self.pos[1] + self.dir[1] * ts))
+            if hook_collision:
+                # hook_collision is the line, find the angle
+                angle = angle_diff(self.dir, (hook_collision[1][0] - hook_collision[0][0],
+                    hook_collision[1][1] - hook_collision[0][1]))
+                print "Collision: %s %f" % (str(hook_collision), angle * 180 / math.pi)
+                # Yay radian conversion
+                # and not... hoook? release? pull? some flags...
+                if math.fabs(angle) > (45.0*math.pi / 180.0) and math.fabs(angle) < (135*math.pi / 180.0) or True:
+                    print "Stuck!"
+                    self.stuck = True
+                    self.dir[0] = 0.0
+                    self.dir[1] = 0.0
+                else:
+                    # Angle too shallow, glance off
+                    print "Sin: %f Cos: %f" % (math.sin(angle), math.cos(angle))
+                    #self.dir[0] = 0
+                    #self.dir[1] = 0
+                    self.dir[0] -= 2* math.sin(angle) # ???
+                    self.dir[1] -= 2*math.cos(angle)
+                    # Somehow sort out the angle difference 
+                    # Angle data: shoot at the left of a block, -90 degrees (correct glance: -1, 0)
+                    # Shoot at the right, +90 degrees (1, 0)
+                    # bottom: -90 (0, -1)
+                    # top: +90 (0, 1)
+                    # Vertical glance from the bottom along the right side: 162
+                    # left side: -162
 
             #print "After: %f %f" % (self.dir[0], self.dir[1])
             self.pos[0] += self.dir[0] * ts
@@ -162,20 +183,22 @@ class Hook(object):
                 self.dir[0] = 0
                 self.dir[1] = 0
 
-        # Cable is stuck, 
+        # Cable is stuck
         else:
             if self.pull:
                 node = self.first_node()
                 cable_len = math.hypot(node[0]-self.origin.pos[0], node[1]-self.origin.pos[1])
                 vec_cable = ((node[0] - self.origin.pos[0])/cable_len, (node[1] - self.origin.pos[1])/cable_len)
-                self.origin.push((vec_cable[0] * 100, vec_cable[1]*100))
+                self.origin.push((vec_cable[0] * 500, vec_cable[1]*500))
+
+                # Do brake-y stuff here, similar to the length limiter above
 
         # World collision-y stuff
         # While blocks don't move, only the origin (player) and final (hook) nodes really need to be checked
         last_node = self.origin.pos
         new_nodes = []
         for idx, node in enumerate(self.path()):
-            collision = self.world.collide_line(last_node, node)
+            collision = self.world.collide_corner(last_node, node)
             if collision:
                 new_nodes.append((idx, collision))
             last_node = node
@@ -184,8 +207,6 @@ class Hook(object):
             # and sort the insert list
             self.nodes.insert(idx, node)
             self.node_angles.insert(idx, math.pi)
-
-        
 
         # Rope unwinding
         # One approach: if two nodes can be joined without a collision, the node can probably be deleted
@@ -212,7 +233,7 @@ class Hook(object):
             angle_nn = math.atan2(next_node[1] - self.nodes[0][1], next_node[0] - self.nodes[0][0])
             #print "np: %f nn: %f" % (angle_np / math.pi * 180.0, angle_nn / math.pi * 180.0)
 
-            print (angle_nn - angle_np) / math.pi * 180.0
+            #print (angle_nn - angle_np) / math.pi * 180.0
             angle = math.fabs(angle_nn - angle_np)
             if self.angle_hook == 0:
                 if angle > math.pi:
@@ -261,7 +282,7 @@ class Hook(object):
         self.real_length += math.hypot(self.pos[0] - last_node[0], self.pos[1] - last_node[1])
         if (not self.stuck and not self.pull) or (self.pull and self.real_length < self.slack_length):
             self.slack_length = self.real_length
-        print "Length: %f Slack: %f" % (self.real_length, self.slack_length)
+        #print "Length: %f Slack: %f" % (self.real_length, self.slack_length)
   
         # TODO: don't idle the cable if the player is hanging off something
         if not self.release and not self.nodes and distsq(self.origin.pos, self.pos) < 25:
@@ -269,10 +290,11 @@ class Hook(object):
             self.idle = True
             # Reset/delete/whatever
 
-    def retract(self):
-        self.pull = True
+    def retract(self, value):
+        self.pull = value
         #self.release = True # DEBUG REMOVE LATER
         self.release = False
+        self.brake = True
 
     def path(self):
         for node in self.nodes:
@@ -373,11 +395,16 @@ class Stage(object):
         if math.isnan(m1):
             # Special case collision for a straight line. They can't both be straight due to the parallel check above
             collision_x = l1[1][0]
-            c2 =  l2[0][1] - m2 * l2[0][0]
+            if collision_x < min(l2[0][0], l2[1][0]) or\
+                    collision_x > max(l2[0][0], l2[1][0]):
+                        return False
+            c2 = l2[0][1] - m2 * l2[0][0]
             collision_y = c2 + collision_x * m2
+            # No need to check against l2 (the non-vertical line) because ...
             if collision_y < min(l1[0][1], l1[1][1]) or\
                     collision_y > max(l1[0][1], l1[1][1]):
                         return False
+            dots.append((collision_x, collision_y))
             return (collision_x, collision_y)
 
         c1 = l1[0][1] - m1 * l1[0][0]
@@ -389,19 +416,21 @@ class Stage(object):
                 collision_y >= min(l1[0][1], l1[1][1]) and collision_y <= max(l1[0][1], l1[1][1]) and\
                 collision_x >= min(l2[0][0], l2[1][0]) and collision_x <= max(l2[0][0], l2[1][0]) and\
                 collision_y >= min(l2[0][1], l2[1][1]) and collision_y <= max(l2[0][1], l2[1][1]):
-
+                    dots.append((collision_x, collision_y))
                     return (collision_x, collision_y)
         return False
 
     # ASSUMPTIONS: blocks form closed shapes
     # Returns the corner where the collision should have occurred (assuming they can't happen on flat sections...)
-    def collide_line(self, start, end):
+    def collide_corner(self, start, end):
         global dots
         # If line collides with a piece of geometry, find the point where it should have wrapped (a corner)
         for block in self.blocks:
+            # Optimisation: bounding boxes
+            # Optimisation: pre-calculate mx and c for the input line (and everything else...)
             collided = []
             for line in self._block_lines(block):
-                if self._line_collision((start, end), (line)):
+                if self._line_collision((start, end), line):
                     # Interesting point will be at the intersection of two hit lines
                     # if it's top and bottom of the block... physics assumptions broken
                     collided.extend([line[0], line[1]])
@@ -422,6 +451,13 @@ class Stage(object):
                     else:
                         yd = 0.1
                     return (vertex[0] + xd, vertex[1] + yd)
+        return False
+    # This may lead to weirdness if the player clips a corner and hits two lines at once...
+    def collide_line(self, start, end):
+        for block in self.blocks:
+            for line in self._block_lines(block):
+                if self._line_collision((start, end), line):
+                    return line
         return False
 
     # Returns the block that caused the collision
@@ -504,7 +540,10 @@ while 1:
                     hook.detach()
 
             elif evt.button == 3:
-                hook.retract()
+                hook.retract(True)
+        elif evt.type == pygame.MOUSEBUTTONUP:
+             if evt.button == 3:
+                 hook.retract(False)
 
         evt = pygame.event.poll()
 
@@ -520,7 +559,6 @@ while 1:
     screen.fill(bg)
 
     pygame.draw.circle(screen, fg, (int(player.pos[0]), int(player.pos[1])), 5)
-
 
     for block in world.blocks:
         pygame.draw.rect(screen, fg, (block[0], block[1], block[2]-block[0], block[3]-block[1]))

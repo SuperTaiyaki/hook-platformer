@@ -13,9 +13,9 @@ fg = pygame.Color(0xFFFFFFFF)
 mg = pygame.Color(0xff0000ff)
 color2 = pygame.Color(0x00ff00ff)
 GRAVITY=-10.0
+STRETCH_FACTOR=200.0
 
-collision_point = (100, 100)
-
+dots = []
 
 class Hook(object):
     def __init__(self, pos, world):
@@ -63,32 +63,58 @@ class Hook(object):
             #print "Before: %f %f" % (self.dir[0], self.dir[1])
             # This is going to do weird things at low framerate
             if self.pull:
+                """
+                ### Pure tension-based system - oscillates
+                if self.real_length > self.slack_length:
+                    stretch_force = self.real_length - self.slack_length * STRETCH_FACTOR
+                    ln = self.last_node()
+                    cable_len = math.hypot(self.pos[0]-ln[0], self.pos[1]-ln[1])
+                    vec_cable = ((self.pos[0] - ln[0])/cable_len, (self.pos[1] - ln[1])/cable_len)
+                    self.dir[0] += stretch_force * vec_cable[0] * ts
+                    self.dir[1] += stretch_force * vec_cable[1] * ts
+                """
 
+                # TODO: IMPLEMENT THIS BIT
+# 			Calculate rate at which player is moving away from node
+#			subtract speed from hook velocity, so the correction algorithm fixes it up automatically
+
+                # Calculate the player's outwards velocity first
+
+                fn = self.first_node()
+                cable_len = math.hypot(self.origin.pos[0] - fn[0], self.origin.pos[1] - fn[1])
+                vec_player = (self.origin.pos[0] - fn[0], self.origin.pos[1] - fn[1]) # unscaled
+                angle = angle_diff(self.origin.velocity, (vec_player[0], vec_player[1]))
+                p_outward_component = 0
+                if math.fabs(angle) < math.pi/2:
+                    p_outward_component = math.cos(angle) * math.hypot(*self.origin.velocity)
+                #print "Player pull: %f" % p_outward_component
+
+                ### Dodgy system that kills outwards force
                 # Lock the cable - don't let it grow outwards
-                dir_motion = math.atan2(self.dir[1], self.dir[0])
                 ln = self.last_node()
                 cable_len = math.hypot(self.pos[0]-ln[0], self.pos[1]-ln[1])
                 vec_cable = ((self.pos[0] - ln[0])/cable_len, (self.pos[1] - ln[1])/cable_len)
                 dir_cable = math.atan2(vec_cable[1], vec_cable[0])
-                # Adjust angles for comparison. atan2 returns -pi to pi
+
+                # Insert the player's velocity as a virtual outwards movement, so it gets cancelled out in the stuff
+                # below
+                vec_movement = (self.dir[0] + vec_cable[0] * p_outward_component,
+                        self.dir[1] + vec_cable[1] * p_outward_component)
                 
-                # Difference between the angles, shift to 0 <= x < 2pi
-                angle_diff = math.fmod(dir_cable - dir_motion + math.pi*2, math.pi*2)
-                # Interested in the absolute difference. Wrap it around to make 340 into -20
-                # i.e. shift range do -pi <= x < pi
-                if angle_diff > math.pi:
-                    angle_diff -= math.pi*2
-                if math.fabs(angle_diff) < math.pi/2:
+                angle = angle_diff(vec_cable, vec_movement)
+
+                if math.fabs(angle) < math.pi/2:
                     print "Outside pull"
 
                     # remove the outward component of motion
                     # Inject a force such that the velocity along ln drops to 0
                     #angle_diff = dir_motion - dir_cable
                     # Scale factor
-                    outward_component = math.cos(angle_diff) # Magnitude of the force heading outwards
-                    outward_component *= math.hypot(self.dir[0], self.dir[1])
+                    outward_component = math.cos(angle) # Magnitude of the force heading outwards
+                    outward_component *= math.hypot(*vec_movement)
 
-                    # Don't remember why this is -ve...
+                    # Negate any outwards force
+                    # rotate around pi radians -> reverse sign (for cos, anyway)
                     self.dir[1] += math.sin(dir_cable + math.pi) * outward_component
                     self.dir[0] += math.cos(dir_cable + math.pi) * outward_component
 
@@ -97,21 +123,21 @@ class Hook(object):
                     #self.dir[1] -= self.dir[1] * 0.5 * ts
 
                     # Outwards force should now be zeroed, fixed pull inwards
-                    self.dir[0] -= vec_cable[0] * self.pull_force * ts
-                    self.dir[1] -= vec_cable[1] * self.pull_force * ts
+                    #self.dir[0] -= vec_cable[0] * self.pull_force * ts
+                    #self.dir[1] -= vec_cable[1] * self.pull_force * ts
 
                     # TODO: factor in player velocity 
                 else:
-                    inward_component = -math.cos(angle_diff) * math.hypot(self.dir[0], self.dir[1])
+                    inward_component = -math.cos(angle) * math.hypot(self.dir[0], self.dir[1])
                     if inward_component < self.pull_force:
                         # TODO: cap the acceleration and speed (don't let it overshoot)
                         # Sort of modelling slack here... not good
-                        self.dir[0] -= vec_cable[0] * self.pull_force * ts
-                        self.dir[1] -= vec_cable[1] * self.pull_force * ts
+                        #self.dir[0] -= vec_cable[0] * self.pull_force * ts
+                        #self.dir[1] -= vec_cable[1] * self.pull_force * ts
+                        pass
                     print "Acceleration pull"
                 #self.pull_force += 500*ts
                 #print self.pull_force
-
 
 
             #print "After: %f %f" % (self.dir[0], self.dir[1])
@@ -135,6 +161,7 @@ class Hook(object):
                 self.stuck = True
                 self.dir[0] = 0
                 self.dir[1] = 0
+
         # Cable is stuck, 
         else:
             if self.pull:
@@ -144,6 +171,7 @@ class Hook(object):
                 self.origin.push((vec_cable[0] * 100, vec_cable[1]*100))
 
         # World collision-y stuff
+        # While blocks don't move, only the origin (player) and final (hook) nodes really need to be checked
         last_node = self.origin.pos
         new_nodes = []
         for idx, node in enumerate(self.path()):
@@ -156,6 +184,8 @@ class Hook(object):
             # and sort the insert list
             self.nodes.insert(idx, node)
             self.node_angles.insert(idx, math.pi)
+
+        
 
         # Rope unwinding
         # One approach: if two nodes can be joined without a collision, the node can probably be deleted
@@ -229,9 +259,9 @@ class Hook(object):
             self.real_length += math.hypot(last_node[0] - node[0], last_node[1] - node[1])
             last_node = node
         self.real_length += math.hypot(self.pos[0] - last_node[0], self.pos[1] - last_node[1])
-        if not self.stuck and not self.pull:
+        if (not self.stuck and not self.pull) or (self.pull and self.real_length < self.slack_length):
             self.slack_length = self.real_length
-        print "Length: %f" % self.length
+        print "Length: %f Slack: %f" % (self.real_length, self.slack_length)
   
         # TODO: don't idle the cable if the player is hanging off something
         if not self.release and not self.nodes and distsq(self.origin.pos, self.pos) < 25:
@@ -328,7 +358,6 @@ class Stage(object):
         return (line[1][1] - line[0][1]) / (line[1][0] - line[0][0])
 
     def _line_collision(self, l1, l2):
-        global collision_point
         # Performance tweak: check if the bounding boxes for the lines intersect
         m1 = self._gradient(l1)
         m2 = self._gradient(l2)
@@ -361,15 +390,13 @@ class Stage(object):
                 collision_x >= min(l2[0][0], l2[1][0]) and collision_x <= max(l2[0][0], l2[1][0]) and\
                 collision_y >= min(l2[0][1], l2[1][1]) and collision_y <= max(l2[0][1], l2[1][1]):
 
-                    # DIRTY HACK
-                    #print "Collision at %d %d" % (collision_x, collision_y)
-                    #collision_point = (collision_x, collision_y)
                     return (collision_x, collision_y)
         return False
 
     # ASSUMPTIONS: blocks form closed shapes
+    # Returns the corner where the collision should have occurred (assuming they can't happen on flat sections...)
     def collide_line(self, start, end):
-        global collision_point
+        global dots
         # If line collides with a piece of geometry, find the point where it should have wrapped (a corner)
         for block in self.blocks:
             collided = []
@@ -384,7 +411,7 @@ class Stage(object):
             #print collided
             for vertex in collided:
                 if collided.count(vertex) > 1:
-                    collision_point = vertex
+                    dots.append(vertex)
                     # TODO: make sure this pushes outside a bit to prevent repeat collisions
                     if vertex[0] == block[0]:
                         xd = -0.1
@@ -397,6 +424,13 @@ class Stage(object):
                     return (vertex[0] + xd, vertex[1] + yd)
         return False
 
+    # Returns the block that caused the collision
+    def collide_point(self, point):
+        for block in self.blocks:
+            if point[0] > block[0] and point[0] < block[2] and\
+                    point[1] > block[1] and point[1] < block[3]:
+                        return block
+        return False
 screen = pygame.display.set_mode((1024, 768), pygame.DOUBLEBUF)
 
 def nvec(src, dst):
@@ -409,6 +443,22 @@ def distsq(src, dst):
     dx = dst[0] - src[0]
     dy = dst[1] - src[1]
     return (dx*dx + dy*dy)
+
+def angle_diff(a1, a2):
+    dir_a1 = math.atan2(a1[1], a1[0])
+    dir_a2 = math.atan2(a2[1], a2[0])
+
+    # Can't just fmod to 180 here - -190 ends up at -10 instead of 170
+    # Difference between the angles, shift to 0 <= x < 2pi
+    # angle_diff = math.fmod(dir_cable - dir_motion + math.pi*2, math.pi*2)
+    # Interested in the absolute difference. Wrap it around to make 340 into -20
+    # i.e. shift range do -pi <= x < pi
+
+    angle = math.fmod(dir_a1 - dir_a2 + math.pi*2, math.pi*2)
+    if angle > math.pi:
+        angle -= math.pi*2
+
+    return angle
 
 counter = pygame.time.Clock()
 
@@ -482,6 +532,8 @@ while 1:
             pygame.draw.line(screen, fg, last_node, this_node)
             last_node = this_node
 
-    pygame.draw.circle(screen, mg, (int(collision_point[0]), int(collision_point[1])), 3)
+    for dot in dots:
+        pygame.draw.circle(screen, mg, (int(dot[0]), int(dot[1])), 3)
+    dots = []
     pygame.display.flip()
 

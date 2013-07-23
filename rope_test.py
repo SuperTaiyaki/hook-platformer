@@ -141,25 +141,15 @@ class Hook(object):
                 print "Collision: %s %f" % (str(hook_collision), angle * 180 / math.pi)
                 # Yay radian conversion
                 # and not... hoook? release? pull? some flags...
-                if math.fabs(angle) > (45.0*math.pi / 180.0) and math.fabs(angle) < (135*math.pi / 180.0) or True:
+                # TODO: check impact (inwards) velocity as well as angle?
+                if math.fabs(angle) > (45.0*math.pi / 180.0) and math.fabs(angle) < (135*math.pi / 180.0):
                     print "Stuck!"
                     self.stuck = True
                     self.dir[0] = 0.0
                     self.dir[1] = 0.0
                 else:
                     # Angle too shallow, glance off
-                    print "Sin: %f Cos: %f" % (math.sin(angle), math.cos(angle))
-                    #self.dir[0] = 0
-                    #self.dir[1] = 0
-                    self.dir[0] -= 2* math.sin(angle) # ???
-                    self.dir[1] -= 2*math.cos(angle)
-                    # Somehow sort out the angle difference 
-                    # Angle data: shoot at the left of a block, -90 degrees (correct glance: -1, 0)
-                    # Shoot at the right, +90 degrees (1, 0)
-                    # bottom: -90 (0, -1)
-                    # top: +90 (0, 1)
-                    # Vertical glance from the bottom along the right side: 162
-                    # left side: -162
+                    self.dir[0], self.dir[1] = vec_bounce(hook_collision, self.dir)
 
             #print "After: %f %f" % (self.dir[0], self.dir[1])
             self.pos[0] += self.dir[0] * ts
@@ -327,6 +317,11 @@ class Player(object):
         self.f_accum[0] = 0
         self.f_accum[1] = 0
 
+        collision = self.world.collide_line(self.pos, (self.pos[0] + self.velocity[0]*ts,
+            self.pos[1] + self.velocity[1] * ts))
+        if collision:
+            self.velocity[0], self.velocity[1] = vec_bounce(collision, self.velocity)
+
         self.pos[0] += self.velocity[0] * ts
         self.pos[1] += self.velocity[1] * ts
 
@@ -340,7 +335,6 @@ class Player(object):
             self.pos[1] = 1
         elif self.pos[1] > 760:
             self.pos[1] = 759
-
             self.velocity[1] = 0
             self.on_ground = True
 
@@ -495,6 +489,21 @@ def angle_diff(a1, a2):
         angle -= math.pi*2
 
     return angle
+
+def vec_bounce(axis, point):
+    # http://en.wikipedia.org/wiki/Coordinate_rotations_and_reflections seems to have the appropriate
+    # matrix...
+    # [cos2t  sin2t][x]
+    # [sin2t -cos2t][y]
+
+    angle = math.atan2(axis[1][1] - axis[0][1], axis[1][0] - axis[0][0])
+    c2t = math.cos(2*angle)
+    s2t = math.sin(2*angle)
+    nx = c2t * point[0] + s2t * point[1]
+    ny = s2t * point[0] - c2t * point[1]
+    return (nx, ny)
+
+
 
 counter = pygame.time.Clock()
 

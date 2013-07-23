@@ -11,6 +11,7 @@ pygame.init()
 bg = pygame.Color(0x80808000)
 fg = pygame.Color(0xFFFFFFFF)
 mg = pygame.Color(0xff0000ff)
+rg = pygame.Color(0x0000ffff)
 color2 = pygame.Color(0x00ff00ff)
 GRAVITY=-50.0
 STRETCH_FACTOR=200.0
@@ -44,9 +45,6 @@ class Hook(object):
         self.real_length = 0 # tension factor
         self.brake = False # Allow more cable to pull? (one way, always allows cable to shrink)
 
-    def detach(self):
-        self.stuck = False
-
     def last_node(self):
         if not self.nodes:
             return self.origin.pos
@@ -65,20 +63,14 @@ class Hook(object):
             # This is going to do weird things at low framerate
             if self.pull or self.brake:
 
-                # TODO: IMPLEMENT THIS BIT
-# 			Calculate rate at which player is moving away from node
-#			subtract speed from hook velocity, so the correction algorithm fixes it up automatically
-
                 # Calculate the player's outwards velocity first
 
                 fn = self.first_node()
-                cable_len = math.hypot(self.origin.pos[0] - fn[0], self.origin.pos[1] - fn[1])
                 vec_player = (self.origin.pos[0] - fn[0], self.origin.pos[1] - fn[1]) # unscaled
-                angle = angle_diff(self.origin.velocity, (vec_player[0], vec_player[1]))
-                p_outward_component = 0
-                if math.fabs(angle) < math.pi/2:
-                    p_outward_component = math.cos(angle) * math.hypot(*self.origin.velocity)
-                #print "Player pull: %f" % p_outward_component
+
+                p_outward_component = outward_speed(vec_player, self.origin.velocity)
+                if p_outward_component < 0:
+                    p_outward_component = 0
 
                 ### Dodgy system that kills outwards force
                 # Lock the cable - don't let it grow outwards
@@ -88,46 +80,41 @@ class Hook(object):
                 dir_cable = math.atan2(vec_cable[1], vec_cable[0])
 
                 # Insert the player's velocity as a virtual outwards movement, so it gets cancelled out in the stuff
-                # below
+                # below.
                 vec_movement = (self.dir[0] + vec_cable[0] * p_outward_component,
                         self.dir[1] + vec_cable[1] * p_outward_component)
                 
                 angle = angle_diff(vec_cable, vec_movement)
+                outward_component = outward_speed(vec_cable, vec_movement)
 
-                if math.fabs(angle) < math.pi/2:
+                if outward_component > 0:
                     #print "Outside pull"
 
                     # remove the outward component of motion
                     # Inject a force such that the velocity along ln drops to 0
-                    #angle_diff = dir_motion - dir_cable
-                    # Scale factor
-                    outward_component = math.cos(angle) # Magnitude of the force heading outwards
-                    outward_component *= math.hypot(*vec_movement)
 
                     # Negate any outwards force
-                    # rotate around pi radians -> reverse sign (for cos, anyway)
+                    # rotate around pi radians -> reverse sign
                     self.dir[1] += math.sin(dir_cable + math.pi) * outward_component
                     self.dir[0] += math.cos(dir_cable + math.pi) * outward_component
 
-                    # Speed damping that doesn't work right
-                    #self.dir[0] -= self.dir[0] * 0.5 * ts
-                    #self.dir[1] -= self.dir[1] * 0.5 * ts
-
                     # Outwards force should now be zeroed, fixed pull inwards
                     if self.pull:
+                        # Dodgy hack to stop the hook from orbiting - at this point the motion will be entirely
+                        # tangential, so damp it a bit
+                        self.dir[0] -= self.dir[0] * 10 * ts
+                        self.dir[1] -= self.dir[1] * 10 * ts
+
                         self.dir[0] -= vec_cable[0] * self.pull_force * ts
                         self.dir[1] -= vec_cable[1] * self.pull_force * ts
-
-                    # TODO: factor in player velocity 
                 else:
                     if self.pull:
-                        inward_component = -math.cos(angle) * math.hypot(self.dir[0], self.dir[1])
-                        if inward_component < self.pull_force:
+                        if -outward_component < self.pull_force:
                             # TODO: cap the acceleration and speed (don't let it overshoot)
                             # Sort of modelling slack here... not good
                             self.dir[0] -= vec_cable[0] * self.pull_force * ts
                             self.dir[1] -= vec_cable[1] * self.pull_force * ts
-                        #print "Acceleration pull"
+                        # print "Acceleration pull"
                 #self.pull_force += 500*ts
                 #print self.pull_force
 
@@ -142,11 +129,12 @@ class Hook(object):
                 # Yay radian conversion
                 # and not... hoook? release? pull? some flags...
                 # TODO: check impact (inwards) velocity as well as angle?
-                if math.fabs(angle) > (45.0*math.pi / 180.0) and math.fabs(angle) < (135*math.pi / 180.0):
-                    print "Stuck!"
+                if math.fabs(angle) > (30.0*math.pi / 180.0) and math.fabs(angle) < (150*math.pi / 180.0):
+                    #print "Stuck!"
                     self.stuck = True
                     self.dir[0] = 0.0
                     self.dir[1] = 0.0
+                    self.brake = True
                 else:
                     # Angle too shallow, glance off
                     self.dir[0], self.dir[1] = vec_bounce(hook_collision, self.dir)
@@ -170,18 +158,26 @@ class Hook(object):
                 elif self.pos[1] > 768:
                     self.pos[1] = 767
                 self.stuck = True
+                self.brake = True
                 self.dir[0] = 0
                 self.dir[1] = 0
 
         # Cable is stuck
         else:
+            node = self.first_node()
+            cable_len = math.hypot(node[0]-self.origin.pos[0], node[1]-self.origin.pos[1])
+            vec_cable = ((node[0] - self.origin.pos[0])/cable_len, (node[1] - self.origin.pos[1])/cable_len)
+
             if self.pull:
-                node = self.first_node()
-                cable_len = math.hypot(node[0]-self.origin.pos[0], node[1]-self.origin.pos[1])
-                vec_cable = ((node[0] - self.origin.pos[0])/cable_len, (node[1] - self.origin.pos[1])/cable_len)
                 self.origin.push((vec_cable[0] * 500, vec_cable[1]*500))
 
-                # Do brake-y stuff here, similar to the length limiter above
+            if self.brake:
+                # Don't let the cable play out any further (i.e. let the player hang off)
+                inward_component = outward_speed(vec_cable, self.origin.velocity)
+                if inward_component < 0:
+                    dir_pcable = math.atan2(vec_cable[1], vec_cable[0])
+                    self.origin.velocity[0] -= math.cos(dir_pcable) * inward_component
+                    self.origin.velocity[1] -= math.sin(dir_pcable) * inward_component
 
         # World collision-y stuff
         # While blocks don't move, only the origin (player) and final (hook) nodes really need to be checked
@@ -281,10 +277,17 @@ class Hook(object):
             # Reset/delete/whatever
 
     def retract(self, value):
-        self.pull = value
-        #self.release = True # DEBUG REMOVE LATER
+        # If hook has been released, don't let player stop the pull
+        # If it's not hooked, calling a retract will pull it in all the way
+        # Maybe a retract shouldn't call an unhooked line, to allow buffering the pull...
+        if self.stuck or value:
+            self.pull = value
         self.release = False
         self.brake = True
+
+    def detach(self):
+        self.stuck = False
+        self.pull = True
 
     def path(self):
         for node in self.nodes:
@@ -461,8 +464,8 @@ class Stage(object):
                     point[1] > block[1] and point[1] < block[3]:
                         return block
         return False
-screen = pygame.display.set_mode((1024, 768), pygame.DOUBLEBUF)
 
+####################### Maths helpers
 def nvec(src, dst):
     dx = dst[0] - src[0]
     dy = dst[1] - src[1]
@@ -503,7 +506,18 @@ def vec_bounce(axis, point):
     ny = s2t * point[0] - c2t * point[1]
     return (nx, ny)
 
+# Scalar speed away from src.
+# Actually just a projection/dot product
+# src is the vector, dst is to be projected
+# TODO: rewrite this as a.^b? (shorter scalar projection definition)
+def outward_speed(src, dst):
+    len = math.hypot(dst[1] - src[1], dst[0] - src[0])
+    angle = angle_diff(dst, src)
+    return math.cos(angle) * math.hypot(*dst)
 
+###################### Misc game code
+
+screen = pygame.display.set_mode((1024, 768), pygame.DOUBLEBUF)
 
 counter = pygame.time.Clock()
 
@@ -543,7 +557,7 @@ while 1:
             if evt.button == 1:
                 if hook.idle:
                     target = nvec(player.pos, evt.pos)
-                    target = (target[0]*400, target[1]*400)
+                    target = (target[0]*900, target[1]*900)
                     hook.fire(target)
                 else:
                     hook.detach()
@@ -576,7 +590,7 @@ while 1:
         last_node = player.pos
         for node in hook.path():
             this_node = (int(node[0]), int(node[1]))
-            pygame.draw.line(screen, fg, last_node, this_node)
+            pygame.draw.line(screen, rg, last_node, this_node)
             last_node = this_node
 
     for dot in dots:

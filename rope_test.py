@@ -5,6 +5,7 @@
 import pygame
 import sys
 import math
+import random
 
 pygame.init()
 
@@ -40,7 +41,7 @@ class Hook(object):
         self.stuck = False # Hook has latched onto something
         self.angle_hook = 0
         self.angle_origin = 0
-        self.pull_force = 4000
+        self.pull_force = 7000
         self.slack_length = 0
         self.real_length = 0 # tension factor
         self.brake = False # Allow more cable to pull? (one way, always allows cable to shrink)
@@ -119,7 +120,12 @@ class Hook(object):
                 #print self.pull_force
 
             # Hook end collision checking
-            hook_collision = self.world.collide_line(self.pos, (self.pos[0] + self.dir[0] * ts, self.pos[1] + self.dir[1] * ts))
+            hook_speed = math.hypot(*self.dir)
+            speed_factor = ts
+            if hook_speed * ts < 5.0:
+                speed_factor = 5.0/hook_speed
+            hook_collision = self.world.collide_line(self.pos, (self.pos[0] + self.dir[0]*speed_factor,
+                self.pos[1] + self.dir[1]*speed_factor))
             #print "start %s end %s" % (self.pos, (self.pos[0] + self.dir[0] * ts, self.pos[1] + self.dir[1] * ts))
             if hook_collision:
                 # hook_collision is the line, find the angle
@@ -129,7 +135,7 @@ class Hook(object):
                 # Yay radian conversion
                 # and not... hoook? release? pull? some flags...
                 # TODO: check impact (inwards) velocity as well as angle?
-                if math.fabs(angle) > (30.0*math.pi / 180.0) and math.fabs(angle) < (150*math.pi / 180.0):
+                if not self.pull and math.fabs(angle) > (30.0*math.pi / 180.0) and math.fabs(angle) < (150*math.pi / 180.0):
                     #print "Stuck!"
                     self.stuck = True
                     self.dir[0] = 0.0
@@ -145,22 +151,6 @@ class Hook(object):
 
             if distsq(self.origin.pos, self.pos) > 100:
                 self.release = False
-
-            # TODO: replace with proper collision check
-            if self.pos[0] < 1 or self.pos[0] > 1024 or self.pos[1] < 0 or self.pos[1] > 768:
-                # Bring it back slightly
-                if self.pos[0] < 0:
-                    self.pos[0] = 1
-                elif self.pos[0] > 1024:
-                    self.pos[0] = 1023
-                if self.pos[1] < 0:
-                    self.pos[1] = 1
-                elif self.pos[1] > 768:
-                    self.pos[1] = 767
-                self.stuck = True
-                self.brake = True
-                self.dir[0] = 0
-                self.dir[1] = 0
 
         # Cable is stuck
         else:
@@ -280,6 +270,8 @@ class Hook(object):
         # If hook has been released, don't let player stop the pull
         # If it's not hooked, calling a retract will pull it in all the way
         # Maybe a retract shouldn't call an unhooked line, to allow buffering the pull...
+        if not self.stuck:
+            return
         if self.stuck or value:
             self.pull = value
         self.release = False
@@ -310,49 +302,55 @@ class Player(object):
 
         if self.on_ground:
             # Why does this act weirdly?
-            self.velocity[0] *= 0.5 * ts
+            self.velocity[0] -= self.velocity[0] * 100 * ts
         #print self.velocity[0]
 
         self.velocity[0] += self.f_accum[0] * ts
         self.velocity[1] += self.f_accum[1] * ts
-
         
         self.f_accum[0] = 0
         self.f_accum[1] = 0
 
-        collision = self.world.collide_line(self.pos, (self.pos[0] + self.velocity[0]*ts,
-            self.pos[1] + self.velocity[1] * ts))
-        if collision:
-            self.velocity[0], self.velocity[1] = vec_bounce(collision, self.velocity)
+        speed = math.hypot(*self.velocity)
+        speed_factor = ts
+        # Stretch the collision vector a bit
+        if speed > 0:
+            if speed*ts < 5.0:
+                #print "Speed cap %f" % (speed*ts)
+                speed_factor = 5.0/speed
+            else:
+                #print "Uncapped %f" % (speed*ts)
+                pass
+            collision = self.world.collide_line(self.pos, (self.pos[0] + self.velocity[0]*speed_factor,
+                self.pos[1] + self.velocity[1]*speed_factor))
+            if collision:
+                self.velocity[0], self.velocity[1] = vec_bounce(collision, self.velocity)
+                # TODO: put on_ground back in here
 
         self.pos[0] += self.velocity[0] * ts
         self.pos[1] += self.velocity[1] * ts
 
         # Collisions
-        self.on_ground = False
-        if self.pos[0] < 10:
-            self.pos[0] = 11
-        elif self.pos[0] > 1024:
-            self.pos[0] = 1023
-        if self.pos[1] < 0:
-            self.pos[1] = 1
-        elif self.pos[1] > 760:
-            self.pos[1] = 759
-            self.velocity[1] = 0
-            self.on_ground = True
 
     def push(self, force):
         self.f_accum[0] += force[0]
         self.f_accum[1] += force[1]
 
-    def position(self):
-        return self.pos
-
 class Stage(object):
     def __init__(self):
         # Top left, bottom right
-        self.blocks = [(800, 500, 900, 600),
-                (700, 300, 800, 400)]
+        #self.blocks = [(800, 500, 900, 600),
+        #        (700, 300, 800, 400)]
+        self.blocks = []
+        for x in range(6):
+            x = random.randrange(100, 900)
+            y = random.randrange(100, 500)
+            width = random.randrange(50, 400)
+            height = random.randrange(50, 400)
+            self.blocks.append((x, y, x+width, y+height))
+        #self.blocks = [(0, 500, 1024, 550)]
+        #self.blocks = [(550, 0, 600, 768)]
+        self.walls = [10, 10, 1014, 758]
 
     def collide_point(self, coord):
         if coord[0] < 0 or coord[0] > 1024:
@@ -377,12 +375,17 @@ class Stage(object):
         return (line[1][1] - line[0][1]) / (line[1][0] - line[0][0])
 
     def _line_collision(self, l1, l2):
+
         # Performance tweak: check if the bounding boxes for the lines intersect
         m1 = self._gradient(l1)
         m2 = self._gradient(l2)
 
         # Parallel lines
-        if m1 == m2 or (math.isnan(m1) and math.isnan(m2)):
+        if (math.isnan(m1) and math.isnan(m2)):
+            if l1[0][0] != l2[0][0]:
+                return False
+            print "Parallel vertical"
+            # TODO: implement intersection check and generate a collision point
             return False
 
         if math.isnan(m2):
@@ -404,15 +407,34 @@ class Stage(object):
             dots.append((collision_x, collision_y))
             return (collision_x, collision_y)
 
+        # Regular collision
+
         c1 = l1[0][1] - m1 * l1[0][0]
         c2 = l2[0][1] - m2 * l2[0][0]
+        if m1 == m2:
+            if c1 != c2:
+                return False
+            print "Aligned!"
+            # TODO: check for overlap and choose a collision point
+            return False
 
-        collision_x = (c2 - c1) / (m1 - m2)
-        collision_y = collision_x * m1 + c1
+        if m2 == 0:
+            collision_y = l2[0][1]
+            collision_x = (collision_y - c1) / m1
+        elif m1 == 0:
+            collision_y = l1[0][1]
+            collision_x = (collision_y - c2) / m2
+        else:
+            collision_x = (c2 - c1) / (m1 - m2)
+            collision_y = collision_x * m1 + c1
+
+        #TODO:  Can this be crunched down to 2 cases by building up the min/max?
         if collision_x >= min(l1[0][0], l1[1][0]) and collision_x <= max(l1[0][0], l1[1][0]) and\
                 collision_y >= min(l1[0][1], l1[1][1]) and collision_y <= max(l1[0][1], l1[1][1]) and\
                 collision_x >= min(l2[0][0], l2[1][0]) and collision_x <= max(l2[0][0], l2[1][0]) and\
                 collision_y >= min(l2[0][1], l2[1][1]) and collision_y <= max(l2[0][1], l2[1][1]):
+
+                    # DEBUG
                     dots.append((collision_x, collision_y))
                     return (collision_x, collision_y)
         return False
@@ -451,6 +473,11 @@ class Stage(object):
         return False
     # This may lead to weirdness if the player clips a corner and hits two lines at once...
     def collide_line(self, start, end):
+        # Wall collisions - left separate because they'll probably be dealt with differently later
+        for line in self._block_lines(self.walls):
+            if self._line_collision((start, end), line):
+                return line
+
         for block in self.blocks:
             for line in self._block_lines(block):
                 if self._line_collision((start, end), line):
@@ -493,6 +520,7 @@ def angle_diff(a1, a2):
 
     return angle
 
+# TODO: incomplete bounce, take away a bit of velocity in the process
 def vec_bounce(axis, point):
     # http://en.wikipedia.org/wiki/Coordinate_rotations_and_reflections seems to have the appropriate
     # matrix...

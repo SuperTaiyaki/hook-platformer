@@ -14,8 +14,10 @@ fg = pygame.Color(0xFFFFFFFF)
 mg = pygame.Color(0xff0000ff)
 rg = pygame.Color(0x0000ffff)
 color2 = pygame.Color(0x00ff00ff)
+black = pygame.Color(0x0)
 GRAVITY=-50.0
 STRETCH_FACTOR=200.0
+FIELD_HEIGHT=2000
 
 dots = []
 
@@ -348,9 +350,16 @@ class Stage(object):
             width = random.randrange(50, 400)
             height = random.randrange(50, 400)
             self.blocks.append((x, y, x+width, y+height))
+
+        y = FIELD_HEIGHT
+        while y > 200:
+            y -= random.randrange(100, 300)
+            for x in range(2):
+                x = random.randrange(100, 900)
+                self.blocks.append((x, y-100, x+100, y))
         #self.blocks = [(0, 500, 1024, 550)]
         #self.blocks = [(550, 0, 600, 768)]
-        self.walls = [10, 10, 1014, 758]
+        self.walls = [10, 10, 1014, 2000]
 
     def collide_point(self, coord):
         if coord[0] < 0 or coord[0] > 1024:
@@ -551,9 +560,13 @@ counter = pygame.time.Clock()
 
 world = Stage()
 
-player = Player((512, 700), world)
+player = Player((512, FIELD_HEIGHT-1), world)
 dir_x = 0
 dir_y = 0
+
+# Coordinate of top-left corner
+viewport_x = 0
+viewport_y = 0
 
 hook = Hook(player, world)
 
@@ -584,7 +597,7 @@ while 1:
         elif evt.type == pygame.MOUSEBUTTONDOWN:
             if evt.button == 1:
                 if hook.idle:
-                    target = nvec(player.pos, evt.pos)
+                    target = nvec(player.pos, (evt.pos[0] + viewport_x, evt.pos[1] + viewport_y))
                     target = (target[0]*900, target[1]*900)
                     hook.fire(target)
                 else:
@@ -595,7 +608,6 @@ while 1:
         elif evt.type == pygame.MOUSEBUTTONUP:
              if evt.button == 3:
                  hook.retract(False)
-
         evt = pygame.event.poll()
 
     ts = counter.tick() / 1000.0
@@ -607,22 +619,33 @@ while 1:
         hook.update(ts)
         player.update(ts)
 
+    # Working on the assumption the field is 2000 high, for now
+    # Chase? swing ahead? 
+    # Lock player in center for now
+    #if player.pos[1] > 200 and player.pos[1] - viewport_y > 500:
+        viewport_y = player.pos[1] - 350
+
     screen.fill(bg)
 
-    pygame.draw.circle(screen, fg, (int(player.pos[0]), int(player.pos[1])), 5)
+    pygame.draw.circle(screen, fg, (int(player.pos[0] - viewport_x), int(player.pos[1] - viewport_y)), 5)
+
+    # Outside borders
+    pygame.draw.rect(screen, black, (0, FIELD_HEIGHT - viewport_y, 1025, 1000))
+    pygame.draw.rect(screen, black, (0, -1000 - viewport_y, 1025, 1000))
+
 
     for block in world.blocks:
-        pygame.draw.rect(screen, fg, (block[0], block[1], block[2]-block[0], block[3]-block[1]))
+        pygame.draw.rect(screen, fg, (block[0] - viewport_x, block[1] - viewport_y, block[2]-block[0], block[3]-block[1]))
 
     if not hook.idle:
-        last_node = player.pos
+        last_node = (player.pos[0] - viewport_x, player.pos[1] - viewport_y)
         for node in hook.path():
-            this_node = (int(node[0]), int(node[1]))
+            this_node = (int(node[0] - viewport_x), int(node[1] - viewport_y))
             pygame.draw.line(screen, rg, last_node, this_node)
             last_node = this_node
 
     for dot in dots:
-        pygame.draw.circle(screen, mg, (int(dot[0]), int(dot[1])), 3)
+        pygame.draw.circle(screen, mg, (int(dot[0] - viewport_x), int(dot[1] - viewport_y)), 3)
     dots = []
     pygame.display.flip()
 

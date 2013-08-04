@@ -18,6 +18,8 @@ black = pygame.Color(0x0)
 GRAVITY=-50.0
 STRETCH_FACTOR=200.0
 FIELD_HEIGHT=2000
+ROPE_LENGTH = 600
+FIELD_WIDTH = 3000
 
 dots = []
 
@@ -130,6 +132,7 @@ class Hook(object):
                 self.pos[1] + self.dir[1]*speed_factor))
             #print "start %s end %s" % (self.pos, (self.pos[0] + self.dir[0] * ts, self.pos[1] + self.dir[1] * ts))
             if hook_collision:
+                hook_collision = hook_collision[0] # Don't care about the actual collision point
                 # hook_collision is the line, find the angle
                 angle = angle_diff(self.dir, (hook_collision[1][0] - hook_collision[0][0],
                     hook_collision[1][1] - hook_collision[0][1]))
@@ -260,10 +263,12 @@ class Hook(object):
         self.real_length += math.hypot(self.pos[0] - last_node[0], self.pos[1] - last_node[1])
         if (not self.stuck and not self.pull) or (self.pull and self.real_length < self.slack_length):
             self.slack_length = self.real_length
+        if self.real_length > ROPE_LENGTH:
+            self.brake = True
         #print "Length: %f Slack: %f" % (self.real_length, self.slack_length)
   
         # TODO: don't idle the cable if the player is hanging off something
-        if not self.release and not self.nodes and distsq(self.origin.pos, self.pos) < 25:
+        if not self.release and not self.nodes and distsq(self.origin.pos, self.pos) < 64:
             self.dir[0] = self.dir[1] = 0
             self.idle = True
             # Reset/delete/whatever
@@ -326,8 +331,22 @@ class Player(object):
             collision = self.world.collide_line(self.pos, (self.pos[0] + self.velocity[0]*speed_factor,
                 self.pos[1] + self.velocity[1]*speed_factor))
             if collision:
-                self.velocity[0], self.velocity[1] = vec_bounce(collision, self.velocity)
+                #self.velocity[0], self.velocity[1] = vec_bounce(collision, self.velocity)
+                
+                # Fix position a little way back from the collision point
+                # Hrm, isn't the collision vector guaranteed to be along the speed vector anyway?
+                impact = (collision[1][0] - self.pos[0], collision[1][1] - self.pos[1])
+                impact_s = math.hypot(impact[0], impact[1])
+                # Is there a guarantee this won't be 0? I don't think so...
+                impact = (impact[0] / impact_s, impact[1] / impact_s)
+
+                self.pos[0] = collision[1][0] - impact[0] * 2.0
+                self.pos[1] = collision[1][1] - impact[1] * 2.0
+
                 # TODO: put on_ground back in here
+
+                self.velocity[0], self.velocity[1] = (0, 0)
+                # TODO: record inwards velocity use as sticking time?
 
         self.pos[0] += self.velocity[0] * ts
         self.pos[1] += self.velocity[1] * ts
@@ -359,7 +378,7 @@ class Stage(object):
                 self.blocks.append((x, y-100, x+100, y))
         #self.blocks = [(0, 500, 1024, 550)]
         #self.blocks = [(550, 0, 600, 768)]
-        self.walls = [10, 10, 1014, 2000]
+        self.walls = [-FIELD_WIDTH/2, 10, FIELD_WIDTH/2, FIELD_HEIGHT]
 
     def collide_point(self, coord):
         if coord[0] < 0 or coord[0] > 1024:
@@ -484,13 +503,15 @@ class Stage(object):
     def collide_line(self, start, end):
         # Wall collisions - left separate because they'll probably be dealt with differently later
         for line in self._block_lines(self.walls):
-            if self._line_collision((start, end), line):
-                return line
+            point = self._line_collision((start, end), line)
+            if point:
+                return (line, point)
 
         for block in self.blocks:
             for line in self._block_lines(block):
-                if self._line_collision((start, end), line):
-                    return line
+                point = self._line_collision((start, end), line)
+                if point:
+                    return (line, point)
         return False
 
     # Returns the block that caused the collision
@@ -560,7 +581,7 @@ counter = pygame.time.Clock()
 
 world = Stage()
 
-player = Player((512, FIELD_HEIGHT-1), world)
+player = Player((512, FIELD_HEIGHT-5), world)
 dir_x = 0
 dir_y = 0
 
@@ -624,6 +645,7 @@ while 1:
     # Lock player in center for now
     #if player.pos[1] > 200 and player.pos[1] - viewport_y > 500:
         viewport_y = player.pos[1] - 350
+        viewport_x = player.pos[0] - 512
 
     screen.fill(bg)
 
@@ -632,7 +654,6 @@ while 1:
     # Outside borders
     pygame.draw.rect(screen, black, (0, FIELD_HEIGHT - viewport_y, 1025, 1000))
     pygame.draw.rect(screen, black, (0, -1000 - viewport_y, 1025, 1000))
-
 
     for block in world.blocks:
         pygame.draw.rect(screen, fg, (block[0] - viewport_x, block[1] - viewport_y, block[2]-block[0], block[3]-block[1]))

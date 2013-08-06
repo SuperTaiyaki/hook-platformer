@@ -8,11 +8,14 @@
 #include "world.h"
 #include "stage.h"
 
+// Tradition? Even though my display is 1080p...
 #define WINDOW_WIDTH 1024
 #define WINDOW_HEIGHT 768
 
+// global so the GLUT callbacks can get to them
 Renderer *renderer;
 World *world;
+Player *player;
 
 //Do all the ugly GLUT stuff here because the callbacks don't allow passing around arguments
 
@@ -91,6 +94,8 @@ int main(int argc, char *argv[]) {
 	glClearColor(0.5f, 0.5f, 0.5f, 1.0f);
 
 	world = new World();
+	player = new Player(0, 10);
+	world->set_player(player);
 	// populate world as necessary
 	renderer = new Renderer(world);
 

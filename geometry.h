@@ -1,15 +1,22 @@
 #ifndef __geometry_h__
 #define __geometry_h__
 
-//typedef float[2] Vertex;
-class Vertex {
-	union {
-		float coords[2];
-		struct {
-			float x, y;
+// Completely transparent class - more like a struct with operators
+class Vec2 {
+	public:
+		Vec2(): x(0), y(0) {};
+		Vec2(float ix, float iy): x(ix), y(iy) {};
+		union {
+			float coords[2];
+			struct {
+				float x, y;
+			};
 		};
-	};
+		// Defining some useful stuff... hopefully not too unpredictable
+		Vec2 &operator+=(const Vec2 &rhs);
+		//Vec2 &operator*(const float &rhs);
 };
+Vec2 operator*(const Vec2 &lhs, const float rhs);
 
 class Rect {
 public:

@@ -14,9 +14,11 @@ class Renderer {
 		World *world;
 
 		void init_geometry();
-
 		void draw_stage();
+
+		void init_player();
 		void draw_player();
+
 		void draw_rope();
 
 		void init_shaders();
@@ -24,6 +26,7 @@ class Renderer {
 
 		GLuint vshader, fshader, shaderprogram, viewport_uniform;
 		GLuint geometry_array, geometry_object;
+		GLuint player_array, player_object;
 
 };
 

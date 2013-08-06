@@ -9,5 +9,14 @@ Rect *World::get_viewport() {
 }
 
 void World::update(float timestep) {
+	player->update(timestep);
 	return;
 }
+
+void World::set_player(Player *p) {
+	player = p;
+}
+const Player &World::get_player() {
+	return *player;
+}
+

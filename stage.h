@@ -13,13 +13,14 @@ class Stage {
 		Stage();
 		~Stage();
 
-		Rect get_bounds();
+		const Rect bounds;// = Rect(-STAGE_WIDTH/2.0f, 0.0f, STAGE_WIDTH/2.0f, STAGE_HEIGHT);
 		const std::list<Rect*> get_geometry();
 	private:
 
 		std::list<Rect*> geometry;
 
-		const Rect bounds;// = Rect(-STAGE_WIDTH/2.0f, 0.0f, STAGE_WIDTH/2.0f, STAGE_HEIGHT);
+
+		void generate_climb();
 };
 
 #endif // __stage_h__

@@ -11,6 +11,10 @@ class Player {
 
 		void update(float timestep);
 
+		// Float for analog control... maybe
+		void control(float x, float y);
+		void fire(float x, float y);
+
 		const Vec2 &get_position() const;
 	private:
 		Vec2 position;

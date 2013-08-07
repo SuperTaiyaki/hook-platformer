@@ -10,6 +10,8 @@ class Renderer {
 
 		void draw();
 
+		void updateViewport(int x, int y);
+
 	private:
 		World *world;
 

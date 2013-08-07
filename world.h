@@ -15,11 +15,14 @@ class World {
 		Stage &get_stage();
 
 		void update(float ts);
+		void set_aspect_ratio(float);
 
-		Rect *get_viewport();
+		const Rect &get_viewport() const;
 	private:
 		Player *player;
-
+		float display_aspect;
+		float zoom;
+		Rect viewport;
 };
 
 #endif // world_h

@@ -21,13 +21,23 @@ Renderer::~Renderer() {
 }
 
 void Renderer::draw() {
-	Rect *viewport = world->get_viewport();
+	const Rect &viewport = world->get_viewport();
 	float matrix[] = {
 		1, 0, 0,
 		0, 1, 0,
 		0, 0, 1};
-	// TODO: Kill this, just quieting a compiler error
-	matrix[1] = viewport->coords[0] * 0;
+	float new_origin[2];
+	new_origin[0] = viewport.x1 + (viewport.x2 - viewport.x1) / 2.0f;
+	new_origin[1] = viewport.y1 + (viewport.y2 - viewport.y1) / 2.0f;
+	// Put in scaling stuff
+	matrix[0] = 2.0f/(viewport.x2 - viewport.x1);
+	matrix[4] = 2.0f/(viewport.y2 - viewport.y1);
+	// Translation
+	// Simple, so no need to run this through a proper multiplication
+	// numbers are in _screen space_
+	matrix[6] = new_origin[0] * matrix[0];
+	matrix[7] = new_origin[1] * matrix[1];
+	//Target space is [-1, 1] on both axes
 
 	// Get the world viewport exactly over the screen viewport
 	glUniformMatrix3fv(viewport_uniform, 1, GL_FALSE, matrix);
@@ -40,6 +50,10 @@ void Renderer::draw() {
 	return;
 }
 
+void Renderer::updateViewport(int x, int y) {
+	glViewport(0, 0, x, y);
+}
+
 void Renderer::draw_stage() {
 	glBindVertexArray(geometry_array);
 	glDrawArrays(GL_TRIANGLES, 0, 3);
@@ -48,9 +62,9 @@ void Renderer::draw_stage() {
 void Renderer::init_geometry() {
 	// Pull the geometry out of world and stick it in vram
 	GLfloat vertices[] = {
-		-1, 0,
-		 1, 0,
-		 0, 1};
+		-100, 0,
+		 100, 0,
+		 0, 100};
 	glGenVertexArrays(1, &geometry_array);
 	glBindVertexArray(geometry_array);
 
@@ -67,12 +81,11 @@ void Renderer::draw_player() {
 	// Update the player mesh first
 	const Player &p = world->get_player();
 	const Vec2 &pos = p.get_position();
-	
+
 	glBindVertexArray(player_array);
 
 	Vec2 *mmap = (Vec2*)glMapBuffer(GL_ARRAY_BUFFER, GL_WRITE_ONLY);
 	*mmap = pos;
-	mmap->y = -0.5; //temporary, so stuff doesn't get pushed off-screen
 	glUnmapBuffer(GL_ARRAY_BUFFER);
 
 	glDrawArrays(GL_POINTS, 0, 1);

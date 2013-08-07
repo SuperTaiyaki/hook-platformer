@@ -18,9 +18,10 @@ class Vec2 {
 };
 Vec2 operator*(const Vec2 &lhs, const float rhs);
 
+// Convention: bottom left, top right (i.e. lower coords, then higher coords
 class Rect {
 public:
-	Rect(float ix1, float iy1, float ix2, float iy2): x1(ix1), y1(iy1), x2(ix1), y2(iy2){};
+	Rect(float ix1, float iy1, float ix2, float iy2): x1(ix1), y1(iy1), x2(ix2), y2(iy2){};
 	union {
 		float coords[4];
 		struct {

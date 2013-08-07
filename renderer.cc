@@ -1,18 +1,16 @@
-
+#include <iostream>
 #include <stdio.h>
 #include <GL/glew.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "renderer.h"
 #include "world.h"
 
-#define GEOMETRY_ARRAY 0
-#define PLAYER_ARRAY 1
-
 Renderer::Renderer(World *w): world(w) {
 
 	init_shaders();
-	//init_geometry();
+	init_geometry();
 	init_player();
 
 	return;
@@ -35,7 +33,7 @@ void Renderer::draw() {
 	glUniformMatrix3fv(viewport_uniform, 1, GL_FALSE, matrix);
 
 	// Fire off triangle lists, etc.
-	//draw_stage();
+	draw_stage();
 	draw_player();
 	draw_rope();
 	
@@ -43,10 +41,8 @@ void Renderer::draw() {
 }
 
 void Renderer::draw_stage() {
-	// possible bug: does the geometry have to be boudn first?
-	glEnableVertexAttribArray(GEOMETRY_ARRAY);
+	glBindVertexArray(geometry_array);
 	glDrawArrays(GL_TRIANGLES, 0, 3);
-	glDisableVertexAttribArray(GEOMETRY_ARRAY);
 }
 
 void Renderer::init_geometry() {
@@ -61,46 +57,45 @@ void Renderer::init_geometry() {
 	glGenBuffers(1, &geometry_object);
 	glBindBuffer(GL_ARRAY_BUFFER, geometry_object);
 	glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-	glVertexAttribPointer(GEOMETRY_ARRAY, 2, GL_FLOAT, GL_FALSE, 0, 0);
+	// hard coding vertices as 0... not likely to be changed in here
+	glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 0, 0);
+	glEnableVertexAttribArray(0);
 	return;
 }
 
 void Renderer::draw_player() {
-	printf("About to draw player\n");
+	// Update the player mesh first
 	const Player &p = world->get_player();
 	const Vec2 &pos = p.get_position();
-	static GLfloat vertices[] = {900, 100};
-	vertices[0] += 0.5;
-
-	printf("%f %f\n" , pos.x, pos.y);
 	
-	// Does the vertex array need to be bound first?
 	glBindVertexArray(player_array);
-	glBindBuffer(GL_ARRAY_BUFFER, player_object);
-	//glBufferData(GL_ARRAY_BUFFER, sizeof(pos), pos.coords, GL_STATIC_DRAW);
-//	glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-//	glVertexAttribPointer(PLAYER_ARRAY, 2, GL_FLOAT, GL_FALSE, 0, 0);
 
-	glEnableVertexAttribArray(PLAYER_ARRAY);
+	Vec2 *mmap = (Vec2*)glMapBuffer(GL_ARRAY_BUFFER, GL_WRITE_ONLY);
+	*mmap = pos;
+	mmap->y = -0.5; //temporary, so stuff doesn't get pushed off-screen
+	glUnmapBuffer(GL_ARRAY_BUFFER);
+
 	glDrawArrays(GL_POINTS, 0, 1);
-	glDisableVertexAttribArray(PLAYER_ARRAY);
-	printf("Drawn player\n");
 	return;
 }
 
 void Renderer::init_player() {
-	printf("About to init player\n");
 	// Load up the mesh/skeleton/thing
 	GLfloat vertices[] = {
-		0.5, 0};
+		1.0, 0};
 	glGenVertexArrays(1, &player_array);
 	glBindVertexArray(player_array);
 
 	glGenBuffers(1, &player_object);
 	glBindBuffer(GL_ARRAY_BUFFER, player_object);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-	glVertexAttribPointer(PLAYER_ARRAY, 2, GL_FLOAT, GL_FALSE, 0, 0);
-	printf("Finished init player\n");
+	glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_DYNAMIC_DRAW);
+	glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 0, 0);
+	glEnableVertexAttribArray(0);
+	GLenum error = glGetError();
+	while (error != GL_NO_ERROR) {
+		std::cout << "Error: " << error << "\n";
+		error = glGetError();
+	}
 	return;
 }
 

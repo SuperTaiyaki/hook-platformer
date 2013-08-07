@@ -17,6 +17,7 @@
 Renderer *renderer;
 World *world;
 Player *player;
+Stage *stage;
 
 enum Keys {
 	LEFT,
@@ -200,6 +201,8 @@ int main(int argc, char *argv[]) {
 	world = new World();
 	player = new Player(0, 10);
 	world->set_player(player);
+	stage = new Stage();
+	world->set_stage(stage);
 	// populate world as necessary
 	renderer = new Renderer(world);
 

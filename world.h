@@ -8,18 +8,20 @@ class World {
 	public:
 		World();
 		~World();
-		void set_stage(Stage &s);
-		void set_player(Player *p);
-
-		const Player &get_player();
-		Stage &get_stage();
 
 		void update(float ts);
 		void set_aspect_ratio(float);
 
+		void set_player(Player *p);
+		const Player &get_player() const;
+
+		void set_stage(Stage *s);
+		const Stage &get_stage() const;
+
 		const Rect &get_viewport() const;
 	private:
 		Player *player;
+		Stage *stage;
 		float display_aspect;
 		float zoom;
 		Rect viewport;

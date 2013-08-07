@@ -30,6 +30,8 @@ class Renderer {
 		GLuint geometry_array, geometry_object;
 		GLuint player_array, player_object;
 
+		int geometry_vertices;
+
 };
 
 #endif //renderer_h

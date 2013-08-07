@@ -13,7 +13,6 @@ const Rect &World::get_viewport() const{
 
 void World::update(float timestep) {
 
-
 	player->update(timestep);
 
 	// zoom is actually width
@@ -25,15 +24,22 @@ void World::update(float timestep) {
 	float height = zoom / display_aspect;
 	viewport.y1 = focus[1] - height/2.0f;
 	viewport.y2 = focus[1] + height/2.0f;
-	
+
 	return;
 }
 
 void World::set_player(Player *p) {
 	player = p;
 }
-const Player &World::get_player() {
+const Player &World::get_player() const {
 	return *player;
+}
+
+void World::set_stage(Stage *st) {
+	stage = st;
+}
+const Stage &World::get_stage() const {
+	return *stage;
 }
 
 void World::set_aspect_ratio(float aspect) {

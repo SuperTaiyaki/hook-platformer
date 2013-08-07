@@ -27,6 +27,8 @@ void Renderer::draw() {
 		0, 1, 0,
 		0, 0, 1};
 	float new_origin[2];
+
+	// Get the world viewport exactly over the screen viewport
 	new_origin[0] = viewport.x1 + (viewport.x2 - viewport.x1) / 2.0f;
 	new_origin[1] = viewport.y1 + (viewport.y2 - viewport.y1) / 2.0f;
 	// Put in scaling stuff
@@ -39,7 +41,6 @@ void Renderer::draw() {
 	matrix[7] = new_origin[1] * matrix[1];
 	//Target space is [-1, 1] on both axes
 
-	// Get the world viewport exactly over the screen viewport
 	glUniformMatrix3fv(viewport_uniform, 1, GL_FALSE, matrix);
 
 	// Fire off triangle lists, etc.
@@ -56,24 +57,56 @@ void Renderer::updateViewport(int x, int y) {
 
 void Renderer::draw_stage() {
 	glBindVertexArray(geometry_array);
-	glDrawArrays(GL_TRIANGLES, 0, 3);
+	glDrawArrays(GL_TRIANGLES, 0, geometry_vertices);
 }
 
 void Renderer::init_geometry() {
 	// Pull the geometry out of world and stick it in vram
-	GLfloat vertices[] = {
+	/*GLfloat vertices[] = {
 		-100, 0,
 		 100, 0,
-		 0, 100};
+		 0, 100}; */
+
+	const Stage &stage = world->get_stage();
+	const std::list<Rect*> &geometry = stage.get_geometry();
+
+	// 6 vertices per box, x/y per vertex
+	geometry_vertices = geometry.size() * 6*2;
+	GLfloat *vertices = new GLfloat[geometry_vertices];
+	int box = 0;
+	for (std::list<Rect *>::const_iterator iter = geometry.begin();
+		       	iter != geometry.end(); iter++) {
+
+		// First triangle, top left, bottom left, bottom right
+		// 2nd triangle top right, top left, bottom right
+		/* 0,4 *----* 3
+		 *     |\   |
+		 *     |  \ |
+		 * 1   *----* 2,5
+		 */
+		Rect *rect = *iter;
+#define coord(vtx, y) (vertices[box*12 + 2*vtx + y*1])
+/*		vertices[box*12 + 2*0 + 0] = rect.x1;
+		vertices[box*12 + 2*5 + 0] = rect.x1 */
+		coord(0, 0) = coord(4, 0) = coord(1, 0) = rect->x1;
+		coord(3, 0) = coord(2, 0) = coord(5, 0) = rect->x2;
+		coord(1, 1) = coord(2, 1) = coord(5, 1) = rect->y1;
+		coord(0, 1) = coord(4, 1) = coord(3, 1) = rect->y2;
+#undef coord
+		box += 1;
+	}
+
 	glGenVertexArrays(1, &geometry_array);
 	glBindVertexArray(geometry_array);
 
 	glGenBuffers(1, &geometry_object);
 	glBindBuffer(GL_ARRAY_BUFFER, geometry_object);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+	glBufferData(GL_ARRAY_BUFFER, geometry_vertices*sizeof(GLfloat), vertices, GL_STATIC_DRAW);
 	// hard coding vertices as 0... not likely to be changed in here
 	glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 0, 0);
 	glEnableVertexAttribArray(0);
+
+	delete[] vertices;
 	return;
 }
 

@@ -36,9 +36,9 @@ void Renderer::draw() {
 	matrix[4] = 2.0f/(viewport.y2 - viewport.y1);
 	// Translation
 	// Simple, so no need to run this through a proper multiplication
-	// numbers are in _screen space_
-	matrix[6] = new_origin[0] * matrix[0];
-	matrix[7] = new_origin[1] * matrix[1];
+	// resulting numbers are in _screen space_
+	matrix[6] = new_origin[0] * matrix[0] * -1.0f;
+	matrix[7] = new_origin[1] * matrix[4] * -1.0f;
 	//Target space is [-1, 1] on both axes
 
 	glUniformMatrix3fv(viewport_uniform, 1, GL_FALSE, matrix);

@@ -9,6 +9,8 @@
 
 Renderer::Renderer(World *w): world(w) {
 
+	glClearColor(0.5f, 0.5f, 0.5f, 1.0f);
+
 	init_shaders();
 	init_geometry();
 	init_player();
@@ -57,6 +59,7 @@ void Renderer::updateViewport(int x, int y) {
 
 void Renderer::draw_stage() {
 	glBindVertexArray(geometry_array);
+	glUniform3f(color_uniform, 0, 0, 0);
 	glDrawArrays(GL_TRIANGLES, 0, geometry_vertices);
 }
 
@@ -107,6 +110,7 @@ void Renderer::init_geometry() {
 	glEnableVertexAttribArray(0);
 
 	delete[] vertices;
+
 	return;
 }
 
@@ -120,6 +124,7 @@ void Renderer::draw_player() {
 	Vec2 *mmap = (Vec2*)glMapBuffer(GL_ARRAY_BUFFER, GL_WRITE_ONLY);
 	*mmap = pos;
 	glUnmapBuffer(GL_ARRAY_BUFFER);
+	glUniform3f(color_uniform, 1.0f, 0.0f, 0.0f);
 
 	glDrawArrays(GL_POINTS, 0, 1);
 	return;
@@ -173,6 +178,7 @@ void Renderer::init_shaders() {
 	glEnable(GL_VERTEX_PROGRAM_POINT_SIZE);
 
 	viewport_uniform = glGetUniformLocation(shaderprogram, "Viewport");
+	color_uniform = glGetUniformLocation(shaderprogram, "Color");
 }
 
 void Renderer::load_shader(GLuint shader, char *filename) {

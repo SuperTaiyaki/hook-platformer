@@ -12,6 +12,9 @@ class World {
 		void update(float ts);
 		void set_aspect_ratio(float);
 
+		Line *collide_line(const Line &line) const;
+		Line *collide_corner() const;
+
 		void set_player(Player *p);
 		const Player &get_player() const;
 

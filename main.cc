@@ -160,9 +160,11 @@ void resize(int width, int height) {
 	world->set_aspect_ratio((float)width/(float)height);
 	window_size[0] = width;
 	window_size[1] = height;
+	std::cout << "New width: " << width << " New height: " << height << "\n";
 }
 
-int main(int argc, char *argv[]) {
+// yes, this breaks the semantics of argc and argv...
+void osd_init(int argc, char *argv[]) {
 	glutInit(&argc, argv);
 	glutInitContextVersion(2, 1); // Intel 4500
 
@@ -196,10 +198,13 @@ int main(int argc, char *argv[]) {
 //	glutSpecialUpFunc(keyboard2up);
 	glutReshapeFunc(resize);
 
-	glClearColor(0.5f, 0.5f, 0.5f, 1.0f);
+}
+
+int main(int argc, char *argv[]) {
+	osd_init(argc, argv);
 
 	world = new World();
-	player = new Player(0, 10);
+	player = new Player(0, 10, *world);
 	world->set_player(player);
 	stage = new Stage();
 	world->set_stage(stage);

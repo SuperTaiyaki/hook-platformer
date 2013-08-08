@@ -1,3 +1,4 @@
+#include <iostream>
 #include "world.h"
 
 World::World(): 
@@ -26,6 +27,10 @@ void World::update(float timestep) {
 	viewport.y2 = focus.y + height/2.0f;
 
 	return;
+}
+
+Line *World::collide_line(const Line &line) const {
+	return stage->collide_line(line);
 }
 
 void World::set_player(Player *p) {

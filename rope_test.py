@@ -332,7 +332,7 @@ class Player(object):
                 self.pos[1] + self.velocity[1]*speed_factor))
             if collision:
                 #self.velocity[0], self.velocity[1] = vec_bounce(collision, self.velocity)
-                
+
                 # Fix position a little way back from the collision point
                 # Hrm, isn't the collision vector guaranteed to be along the speed vector anyway?
                 impact = (collision[1][0] - self.pos[0], collision[1][1] - self.pos[1])

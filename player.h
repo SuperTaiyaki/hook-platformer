@@ -3,10 +3,12 @@
 
 #include "geometry.h"
 
+class World;
+
 class Player {
 	public:
 		// Do velocity and f_accum get zeroed...?
-		Player(float x, float y): position(x, y) {};
+		Player(float x, float y, World &w): position(x, y), world(w) {};
 		~Player();
 
 		void update(float timestep);
@@ -20,6 +22,7 @@ class Player {
 		Vec2 position;
 		Vec2 velocity;
 		Vec2 f_accum;
+		World &world;
 };
 
 #endif // __player_h__

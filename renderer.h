@@ -26,7 +26,7 @@ class Renderer {
 		void init_shaders();
 		void load_shader(GLuint shader, char *filename);
 
-		GLuint vshader, fshader, shaderprogram, viewport_uniform;
+		GLuint vshader, fshader, shaderprogram, viewport_uniform, color_uniform;
 		GLuint geometry_array, geometry_object;
 		GLuint player_array, player_object;
 

@@ -2,8 +2,11 @@
 #include <cmath>
 #include <algorithm>
 #include <iostream>
+#include <vector>
 
 #include "geometry.h"
+
+extern std::vector<Vec2> dots;
 
 Vec2 &Vec2::operator+=(const Vec2 &rhs) {
 	x += rhs.x;
@@ -43,6 +46,9 @@ float gradient(const Line &line) {
 	return (line.y2 - line.y1) / (line.x2 - line.x1);
 }
 
+// Possible collision glitch: horizontal line vs near-horizontal line
+// Only seems to manifest at the bottom of boxes, wrapping around to the right side
+// hrm... 2 lines starting at the same point seems to be the issue?
 Vec2 *line_collision(const Line &l1, const Line &l2) {
 	float m1 = gradient(l1);
 	float m2 = gradient(l2);
@@ -80,8 +86,9 @@ Vec2 *line_collision(const Line &l1, const Line &l2) {
 		collision_y = c2 + collision_x * m2;
 		if (collision_y < std::min(rl1->y1, rl1->y2) || 
 				collision_y > std::max(rl1->y1, rl1->y2)) {
-				return NULL;
+			return NULL;
 		}
+		dots.push_back(Vec2(collision_x, collision_y));
 		return new Vec2(collision_x, collision_y);
 	}
 
@@ -91,6 +98,7 @@ Vec2 *line_collision(const Line &l1, const Line &l2) {
 		if (c1 != c2) {
 			return NULL;
 		}
+		std::cout << "Ignored parallel collision\n";
 		// TODO: More parallel collision junk...
 		return NULL;
 	}
@@ -114,6 +122,7 @@ Vec2 *line_collision(const Line &l1, const Line &l2) {
 
 	if (collision_x >= min_x && collision_x <= max_x &&
 			collision_y >= min_y && collision_y <= max_y) {
+		dots.push_back(Vec2(collision_x, collision_y));
 		return new Vec2(collision_x, collision_y);
 	}
 

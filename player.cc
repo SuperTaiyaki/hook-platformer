@@ -40,7 +40,6 @@ void Player::update(float ts) {
 
 void Player::wrap_rope() {
 
-	// Geometry isn't mobile, so only the first and last segments can actually move
 	std::list<Vec2>::iterator iter = hook_nodes.begin();
 
 	iter++;
@@ -50,6 +49,7 @@ void Player::wrap_rope() {
 		hook_nodes.insert(iter, *collision);
 	}
 
+	// Geometry isn't mobile, so only the first and last segments can actually move
 /*	Vec2 *last_node = NULL;
 	for (std::list<Vec2>::iterator iter = hook_nodes.begin();
 			iter != hook_nodes.end(); iter++) {
@@ -72,8 +72,10 @@ void Player::wrap_rope() {
 }
 
 void Player::control(float x, float y) {
-	velocity.x += x * PLAYER_SPEED_X;
-	velocity.y += y * PLAYER_SPEED_Y;
+	//velocity.x += x * PLAYER_SPEED_X;
+	//velocity.y += y * PLAYER_SPEED_Y;
+	velocity.y = y * PLAYER_SPEED_X;
+	velocity.x = x * PLAYER_SPEED_X;
 }
 
 void Player::fire(float x, float y) {

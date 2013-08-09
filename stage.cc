@@ -95,7 +95,6 @@ Vec2 *Stage::collide_corner(const Line &other) const {
 			Vec2 *point = line_collision(other, *liter);
 			if (point) {
 				delete(point);
-				// Crap, this should be line, not point...
 				Vec2 p1(Vec2((*liter).x1, (*liter).y1));
 				if (points.find(p1) != points.end()) {
 					ret = new Vec2(p1);
@@ -115,6 +114,19 @@ Vec2 *Stage::collide_corner(const Line &other) const {
 		points.clear();
 		delete lines;
 		if (ret) {
+			// Fiddle the values lightly, to push the collision _outside_ the corner
+			// TODO: do the std::min/max thing so this works if vertices are out of order (would break the
+			// block generation anyway)
+			if (ret->x == (*iter)->x1) {
+				ret->x -= 0.1f;
+			} else { // it's x2, the right edge
+				ret->x += 0.1f;
+			}
+			if (ret->y == (*iter)->y1) {
+				ret->y -= 0.1f;
+			} else {
+				ret->y += 0.1f;
+			}
 			break;
 		}
 	}

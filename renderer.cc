@@ -1,4 +1,5 @@
 #include <iostream>
+#include <vector>
 #include <stdio.h>
 #include <GL/glew.h>
 #include <stdlib.h>
@@ -6,6 +7,9 @@
 
 #include "renderer.h"
 #include "world.h"
+
+// Debugging!
+std::vector<Vec2> dots;
 
 Renderer::Renderer(World *w): world(w) {
 
@@ -21,6 +25,18 @@ Renderer::Renderer(World *w): world(w) {
 
 Renderer::~Renderer() {
 	return;
+}
+
+// Yay compatibility
+void draw_dots() {
+	glBegin(GL_POINTS);
+	for (std::vector<Vec2>::const_iterator iter = dots.begin();
+				iter != dots.end(); iter++) {
+		glVertex2f((*iter).x, (*iter).y);
+	}
+	glEnd();
+
+	dots.erase(dots.begin(), dots.end());
 }
 
 void Renderer::draw() {
@@ -50,6 +66,8 @@ void Renderer::draw() {
 	draw_stage();
 	draw_player();
 	draw_rope();
+
+	draw_dots();
 	
 	return;
 }

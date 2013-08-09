@@ -18,6 +18,7 @@ void Hook::launch(const Vec2 &origin, const Vec2 &aim) {
 	velocity = aim * (HOOK_SPEED/len);
 	position = origin;
 	active = 1;
+	stuck = 0;
 	return;
 }
 
@@ -29,12 +30,11 @@ void Hook::update(float ts) {
 		Vec2 next_pos = position + velocity * ts;
 		Line movement(position, next_pos);
 
-		Line *collision = world.collide_line(movement);
-		if (collision) {
+		std::auto_ptr<Line> collision = world.collide_line(movement);
+		if (collision.get()) {
 			//vec2_bounce(*collision, velocity);
 			stuck = 1;
 			velocity.x = velocity.y = 0;
-			delete collision;
 		}
 
 		position += velocity * ts;

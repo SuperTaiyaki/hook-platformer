@@ -49,16 +49,16 @@ float gradient(const Line &line) {
 // Possible collision glitch: horizontal line vs near-horizontal line
 // Only seems to manifest at the bottom of boxes, wrapping around to the right side
 // hrm... 2 lines starting at the same point seems to be the issue?
-Vec2 *line_collision(const Line &l1, const Line &l2) {
+std::auto_ptr<Vec2> line_collision(const Line &l1, const Line &l2) {
 	float m1 = gradient(l1);
 	float m2 = gradient(l2);
 
 	if (isinf(m1) and isinf(m2)) {
 		if (l1.x1 != l2.x1) {
-			return NULL;
+			return std::auto_ptr<Vec2>();
 		}
 		// TODO: parallel check
-		return NULL;
+		return std::auto_ptr<Vec2>();
 	}
 
 	float c1, c2;
@@ -79,28 +79,28 @@ Vec2 *line_collision(const Line &l1, const Line &l2) {
 		collision_x = rl1->x1;
 		if (collision_x < std::min(rl2->x1, rl2->x2) ||
 				collision_x > std::max(rl2->x1, rl2->x2)) {
-			return NULL;
+			return std::auto_ptr<Vec2>();
 		}
 
 		c2 = rl2->y1 - m2 * rl2->x1;
 		collision_y = c2 + collision_x * m2;
 		if (collision_y < std::min(rl1->y1, rl1->y2) || 
 				collision_y > std::max(rl1->y1, rl1->y2)) {
-			return NULL;
+			return std::auto_ptr<Vec2>();
 		}
 		dots.push_back(Vec2(collision_x, collision_y));
-		return new Vec2(collision_x, collision_y);
+		return std::auto_ptr<Vec2>(new Vec2(collision_x, collision_y));
 	}
 
 	c1 = rl1->y1 - m1 * rl1->x1;
 	c2 = rl2->y1 - m2 * rl2->x1;
 	if (m1 == m2) {
 		if (c1 != c2) {
-			return NULL;
+			return std::auto_ptr<Vec2>();
 		}
 		std::cout << "Ignored parallel collision\n";
 		// TODO: More parallel collision junk...
-		return NULL;
+		return std::auto_ptr<Vec2>();
 	}
 
 	// Special cases for straight lines - float error makes this awkward otherwise
@@ -123,10 +123,10 @@ Vec2 *line_collision(const Line &l1, const Line &l2) {
 	if (collision_x >= min_x && collision_x <= max_x &&
 			collision_y >= min_y && collision_y <= max_y) {
 		dots.push_back(Vec2(collision_x, collision_y));
-		return new Vec2(collision_x, collision_y);
+		return std::auto_ptr<Vec2>(new Vec2(collision_x, collision_y));
 	}
 
-	return NULL;
+	return std::auto_ptr<Vec2>();
 }
 
 void vec2_bounce(const Line &axis, Vec2 &point) {

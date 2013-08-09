@@ -18,11 +18,10 @@ void Player::update(float ts) {
 		Vec2 next_pos = position + velocity * ts;
 		Line movement(position, next_pos);
 
-		Line *collision = world.collide_line(movement);
-		if (collision) {
+		std::auto_ptr<Line> collision = world.collide_line(movement);
+		if (collision.get()) {
 			print_line("Collision ", *collision);
 			vec2_bounce(*collision, velocity);
-			delete collision;
 		}
 
 		position += velocity * ts;
@@ -44,8 +43,8 @@ void Player::wrap_rope() {
 
 	iter++;
 	Line segment(hook_nodes.front(), *iter);
-	Vec2 *collision = world.collide_corner(segment);
-	if (collision) {
+	std::auto_ptr<Vec2> collision = world.collide_corner(segment);
+	if (collision.get()) {
 		hook_nodes.insert(iter, *collision);
 	}
 

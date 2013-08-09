@@ -29,11 +29,11 @@ void World::update(float timestep) {
 	return;
 }
 
-Line *World::collide_line(const Line &line) const {
+std::auto_ptr<Line> World::collide_line(const Line &line) const {
 	return stage->collide_line(line);
 }
 
-Vec2 *World::collide_corner(const Line &line) const {
+std::auto_ptr<Vec2> World::collide_corner(const Line &line) const {
 	return stage->collide_corner(line);
 }
 

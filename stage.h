@@ -16,8 +16,8 @@ class Stage {
 
 		const Rect &get_bounds() const;
 
-		Line *collide_line(const Line &in) const;
-		Vec2 *collide_corner(const Line &in) const;
+		std::auto_ptr<Line> collide_line(const Line &in) const;
+		std::auto_ptr<Vec2> collide_corner(const Line &in) const;
 	private:
 
 		std::list<Rect*> geometry;
@@ -25,7 +25,7 @@ class Stage {
 		void generate_border();
 		void generate_climb();
 
-		std::vector<Line> *block_borders(Rect &in) const;
+		std::auto_ptr<std::vector<Line> > block_borders(Rect &in) const;
 };
 
 #endif // __stage_h__

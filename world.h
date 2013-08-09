@@ -12,8 +12,8 @@ class World {
 		void update(float ts);
 		void set_aspect_ratio(float);
 
-		Line *collide_line(const Line &line) const;
-		Vec2 *collide_corner(const Line &line) const;
+		std::auto_ptr<Line> collide_line(const Line &line) const;
+		std::auto_ptr<Vec2> collide_corner(const Line &line) const;
 
 		void set_player(Player *p);
 		const Player &get_player() const;

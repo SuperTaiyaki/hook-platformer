@@ -1,6 +1,8 @@
 #ifndef __geometry_h__
 #define __geometry_h__
 
+#include <memory>
+
 // Completely transparent class - more like a struct with operators
 class Vec2 {
 	public:
@@ -35,7 +37,7 @@ public:
 };
 typedef Rect Line; // actually a segment
 
-Vec2 *line_collision(const Line &l1, const Line &l2);
+std::auto_ptr<Vec2> line_collision(const Line &l1, const Line &l2);
 // Reflect point in axis
 void vec2_bounce(const Line &axis, Vec2 &point);
 

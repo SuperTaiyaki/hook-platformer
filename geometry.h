@@ -17,6 +17,7 @@ class Vec2 {
 		// Defining some useful stuff... hopefully not too haphazard
 		// There are only getting added as they're needed
 		Vec2 &operator+=(const Vec2 &rhs);
+		Vec2 &operator-=(const Vec2 &rhs);
 		void normalize();
 };
 Vec2 operator*(const Vec2 &lhs, const float rhs);

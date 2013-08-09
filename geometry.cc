@@ -15,6 +15,13 @@ Vec2 &Vec2::operator+=(const Vec2 &rhs) {
 	return *this;
 }
 
+Vec2 &Vec2::operator-=(const Vec2 &rhs) {
+	x -= rhs.x;
+	y -= rhs.y;
+
+	return *this;
+}
+
 Vec2 operator*(const Vec2 &lhs, const float rhs) {
 	Vec2 ret = lhs;
 	ret.x *= rhs;
@@ -168,9 +175,16 @@ float dist2(const Vec2 &a, const Vec2 &b) {
 }
 
 //TODO: rewrite this as a.^b? (shorter scalar projection definition)
+/*
 float vec2_project(const Vec2 &src, const Vec2 &dst) {
 	float angle = angle_diff(dst, src);
-	return std::cos(angle) * hypot(dst.x, dst.y);
+	//return std::cos(angle) * hypot(dst.x, dst.y);
+	return std::cos(angle) * hypot(src.x, src.y);
+}*/
+float vec2_project(const Vec2 &src, const Vec2 &dst) {
+	Vec2 dstn = dst;
+	dstn.normalize();
+	return src.x * dstn.x + src.y * dstn.y;
 }
 
 float angle_diff(const Vec2 &a1, const Vec2 &a2) {

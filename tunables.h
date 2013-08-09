@@ -1,5 +1,5 @@
-#define PLAYER_SPEED_X 200
-#define PLAYER_SPEED_Y 200
+#define PLAYER_SPEED_X 100
+#define PLAYER_SPEED_Y 100
 #define GRAVITY 100
 #define PULL_FORCE 500
 

@@ -17,25 +17,53 @@ const Vec2 &Player::node_2() const {
 
 void Player::rope_retract(float ts) {
 
-	if (hook.stuck) {
+	if (hook.stuck) { // player being pulled towards hook
 		const Vec2 &pull_point = node_2();
 		Vec2 rope_vec = pull_point - position;
 		rope_vec.normalize();
 		push(rope_vec.x * PULL_FORCE, rope_vec.y * PULL_FORCE);
+	} else { // hook being retracted
+		// Given that this is basically cosmetic, it's a lot of work!
+		std::list<Vec2>::const_reverse_iterator iter = hook_nodes.rbegin();
+		iter++;
+		Vec2 rope_vec = *iter - hook.position;
+		//rope_vec points from the hook back at the last node
+		rope_vec.normalize();
+
+		Vec2 hook_motion = hook.velocity;
+
+		// Braking
+		// Insert player's velocity as outward movement, so the end gets dragged around correctly
+		{
+			const Vec2 &pull_point = node_2();
+			Vec2 pull_vec = position - pull_point;
+
+			float outward_component = vec2_project(velocity, pull_vec);
+			if (outward_component > 0) {
+				std::cout << "Player pulling\n";
+				hook_motion -= rope_vec * outward_component;
+			}
+		}
+		// Actual calculation
+		float outward_component = vec2_project(hook_motion, rope_vec);
+
+		if (outward_component < 0) {
+			hook.velocity -= rope_vec * outward_component;
+		}
+
+		// Braking done, now pull in a bit
+		hook.velocity -= hook.velocity * (ts * 10);
+
+		hook.velocity += rope_vec * 4000 * ts;
 	}
 }
 
 void Player::rope_brake() {
 	const Vec2 &pull_point = node_2();
 	Vec2 pull_vec = position - pull_point;
-	
+
 	float outward_component = vec2_project(velocity, pull_vec);
 	if (outward_component > 0) {
-		std::cout << "Outward pull\n";
-		/*
-		float angle = std::atan2(pull_vec.y, pull_vec.x);
-		velocity.x += std::cos(angle) * outward_component;
-		velocity.y += std::sin(angle) * outward_component; */
 		pull_vec.normalize();
 		velocity += pull_vec * (outward_component * -1);
 	}
@@ -84,9 +112,9 @@ void Player::update(float ts) {
 			} else {
 				release_window = 0;
 			}
-			std::list<Vec2>::reverse_iterator iter2 = hook_nodes.rend();
-			iter--; // .back()
-			iter--; // one before back
+			// Don't really need to do this if the end is hooked
+			std::list<Vec2>::reverse_iterator iter2 = hook_nodes.rbegin();
+			iter++; // .back()
 			if (dist2(*iter, hook_nodes.back()) < NODE_MIN_DISTANCE) {
 				hook_nodes.erase(iter);
 			}
@@ -151,6 +179,9 @@ void Player::trigger(float x, float y) {
 		hook.release();
 		// pull in hook
 		pull = 1;
+		std::cout << "Retract!\n";
+		hook.velocity.x = 0;
+		hook.velocity.y = 0;
 	} else {
 		std::cout << "Fire!\n";
 		print_vec2("Player", position);

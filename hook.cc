@@ -30,7 +30,7 @@ void Hook::launch(const Vec2 &origin, const Vec2 &aim) {
 void Hook::update(float ts) {
 	if (!stuck) {
 		velocity.y -= GRAVITY * ts;
-		
+
 		Vec2 next_pos = position + velocity * ts;
 		Line movement(position, next_pos);
 
@@ -44,8 +44,6 @@ void Hook::update(float ts) {
 		}
 
 		position += velocity * ts;
-		print_vec2("Hook p", position);
-		print_vec2("Hook v", velocity);
 	}
 }
 

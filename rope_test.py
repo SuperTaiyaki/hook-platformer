@@ -314,7 +314,7 @@ class Player(object):
 
         self.velocity[0] += self.f_accum[0] * ts
         self.velocity[1] += self.f_accum[1] * ts
-        
+ 
         self.f_accum[0] = 0
         self.f_accum[1] = 0
 

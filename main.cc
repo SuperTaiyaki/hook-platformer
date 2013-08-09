@@ -77,11 +77,12 @@ void render() {
 		float world_coords[2];
 		world_coords[0] = viewport.x1 + (viewport.x2 - viewport.x1) * screen_coords[0];
 		world_coords[1] = viewport.y1 + (viewport.y2 - viewport.y1) * screen_coords[1];
-		player->fire(world_coords[0], world_coords[1]);
+		player->trigger(world_coords[0], world_coords[1]);
 	}
 
 	key_last_state[FIRE] = key_states[FIRE];
 	player->control(x, y);
+	player->retract(key_states[RETRACT]);
 
 	world->update(timestep);
 

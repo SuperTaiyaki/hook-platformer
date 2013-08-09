@@ -41,6 +41,15 @@ bool operator<(const Vec2 &lhs, const Vec2 &rhs) {
 	return lhs.x < rhs.x;
 }
 
+void Vec2::normalize() {
+	float len = hypot(*this);
+	if (len == 0) {
+		return;
+	}
+	x /= len;
+	y /= len;
+}
+
 float gradient(const Line &line) {
 	// No need to worry about infinites here?
 	return (line.y2 - line.y1) / (line.x2 - line.x1);
@@ -150,6 +159,12 @@ float hypot(const Vec2 &segment) {
 }
 float hypot(const Line &segment) {
 	return hypot(segment.x2 - segment.x1, segment.y2 - segment.y1);
+}
+
+float dist2(const Vec2 &a, const Vec2 &b) {
+	float x = a.x - b.x;
+	float y = a.y - b.y;
+	return x*x + y*y;
 }
 
 //TODO: rewrite this as a.^b? (shorter scalar projection definition)

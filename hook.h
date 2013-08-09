@@ -12,6 +12,7 @@ class Hook {
 		bool is_active() const;
 		void release();
 		void launch(const Vec2 &origin, const Vec2 &aim);
+		void deactivate();
 		void update(float timestep);
 		const Vec2 &get_position() const;
 	private:

@@ -17,6 +17,7 @@ class Vec2 {
 		// Defining some useful stuff... hopefully not too haphazard
 		// There are only getting added as they're needed
 		Vec2 &operator+=(const Vec2 &rhs);
+		void normalize();
 };
 Vec2 operator*(const Vec2 &lhs, const float rhs);
 Vec2 operator+(const Vec2 &lhs, const Vec2 &rhs);
@@ -50,6 +51,8 @@ float angle_diff(const Vec2 &a1, const Vec2 &a2);
 float hypot(const float x, const float y);
 float hypot(const Vec2 &segment);
 float hypot(const Line &segment);
+// Distance between points squared
+float dist2(const Vec2 &a, const Vec2 &b);
 
 void print_vec2(std::string prefix, const Vec2 &in);
 void print_line(std::string prefix, const Line &in);

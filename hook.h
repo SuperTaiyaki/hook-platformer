@@ -6,7 +6,7 @@ class World;
 
 class Hook {
 	public:
-		Hook(World &w): active(0), world(w) {};
+		Hook(World &w): stuck(0), active(0), world(w) {};
 		~Hook() {};
 
 		bool is_active() const;

@@ -31,7 +31,6 @@ void Player::rope_retract(float ts) {
 		rope_vec.normalize();
 
 		Vec2 hook_motion = hook.velocity;
-		print_vec2("Hook velocity before", hook_motion);
 
 		// Braking
 		// Insert player's velocity as outward movement, so the end gets dragged around correctly
@@ -42,7 +41,6 @@ void Player::rope_retract(float ts) {
 			// Could probably simplify this by just adding to the other outward_ calculation
 			float outward_component = vec2_project(velocity, pull_vec);
 			if (outward_component > 0) {
-				std::cout << "Player pulling\n";
 				hook_motion -= rope_vec * outward_component;
 			}
 		}
@@ -111,16 +109,24 @@ void Player::update(float ts) {
 			iter++;
 			if (dist2(hook_nodes.front(), *iter) < NODE_MIN_DISTANCE) {
 				if (!release_window) {
+					std::cout << "Node deleted player end\n";
 					hook_nodes.erase(iter);
 				}
 			} else {
 				release_window = 0;
 			}
-			// Don't really need to do this if the end is hooked
-			std::list<Vec2>::reverse_iterator iter2 = hook_nodes.rbegin();
-			iter++; // .back()
-			if (dist2(*iter, hook_nodes.back()) < NODE_MIN_DISTANCE) {
-				hook_nodes.erase(iter);
+			if (!hook.stuck) {
+				// reverse iterators are confusing
+				//std::list<Vec2>::reverse_iterator iter2 = hook_nodes.rbegin();
+				//iter2++; // .back()
+				std::list<Vec2>::iterator iter2 = hook_nodes.end();
+				iter2--;
+				iter2--;
+				if (!release_window && dist2(*iter2, hook_nodes.back()) < NODE_MIN_DISTANCE) {
+					std::cout << "Node deleted hook end\n";
+					//hook_nodes.erase(--iter2.base());
+					hook_nodes.erase(iter2);
+				}
 			}
 
 			wrap_rope();

@@ -32,6 +32,11 @@ Vec2 operator-(const Vec2 &lhs, const Vec2 &rhs) {
 	ret.y -= rhs.y;
 	return ret;
 }
+bool operator<(const Vec2 &lhs, const Vec2 &rhs) {
+	if (lhs.x == rhs.x)
+		return lhs.y < rhs.y;
+	return lhs.x < rhs.x;
+}
 
 float gradient(const Line &line) {
 	// No need to worry about infinites here?

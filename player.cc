@@ -28,12 +28,47 @@ void Player::update(float ts) {
 		position += velocity * ts;
 	}
 	if (hook.is_active()) {
+		wrap_rope();
+
 		// TODO: confirm if this copies in-place (maybe)
 		hook_nodes.front() = position;
 		hook_nodes.back() = hook.get_position();
 	}
 	return;
 
+}
+
+void Player::wrap_rope() {
+
+	// Geometry isn't mobile, so only the first and last segments can actually move
+	std::list<Vec2>::iterator iter = hook_nodes.begin();
+
+	iter++;
+	Line segment(hook_nodes.front(), *iter);
+	Vec2 *collision = world.collide_corner(segment);
+	if (collision) {
+		hook_nodes.insert(iter, *collision);
+	}
+
+/*	Vec2 *last_node = NULL;
+	for (std::list<Vec2>::iterator iter = hook_nodes.begin();
+			iter != hook_nodes.end(); iter++) {
+		if (!last_node) {
+			last_node = &*iter;
+			continue;
+		}
+
+		Line segment(*last_node, *iter);
+		Vec2 *collision = world.collide_corner(segment);
+		if (collision) {
+			hook_nodes.insert(iter, *collision);
+			delete collision;
+		} else {
+			last_node = &*iter;
+		}
+
+	}
+*/
 }
 
 void Player::control(float x, float y) {

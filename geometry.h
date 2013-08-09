@@ -19,12 +19,13 @@ class Vec2 {
 Vec2 operator*(const Vec2 &lhs, const float rhs);
 Vec2 operator+(const Vec2 &lhs, const Vec2 &rhs);
 Vec2 operator-(const Vec2 &lhs, const Vec2 &rhs);
+bool operator<(const Vec2 &lhs, const Vec2 &rhs); // Only for container use!
 
 // Convention: bottom left, top right (i.e. lower coords, then higher coords
 class Rect {
 public:
 	Rect(float ix1, float iy1, float ix2, float iy2): x1(ix1), y1(iy1), x2(ix2), y2(iy2){};
-	Rect(Vec2 &p1, Vec2 &p2): x1(p1.x), y1(p1.y), x2(p2.x), y2(p2.y){};
+	Rect(const Vec2 &p1, const Vec2 &p2): x1(p1.x), y1(p1.y), x2(p2.x), y2(p2.y){};
 	union {
 		float coords[4];
 		struct {

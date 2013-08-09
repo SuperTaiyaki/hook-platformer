@@ -21,6 +21,8 @@ class Hook {
 		bool active;
 
 		World &world;
+
+	friend class Player;
 };
 
 #endif // __hook_h__

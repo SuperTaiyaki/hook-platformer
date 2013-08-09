@@ -33,6 +33,11 @@ Line *World::collide_line(const Line &line) const {
 	return stage->collide_line(line);
 }
 
+Vec2 *World::collide_corner(const Line &line) const {
+	return stage->collide_corner(line);
+}
+
+
 void World::set_player(Player *p) {
 	player = p;
 }

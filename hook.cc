@@ -31,7 +31,9 @@ void Hook::update(float ts) {
 
 		Line *collision = world.collide_line(movement);
 		if (collision) {
-			vec2_bounce(*collision, velocity);
+			//vec2_bounce(*collision, velocity);
+			stuck = 1;
+			velocity.x = velocity.y = 0;
 			delete collision;
 		}
 

@@ -1,5 +1,6 @@
 #include "stdlib.h"
 #include <iostream>
+#include <set>
 
 #include "stage.h"
 
@@ -77,6 +78,48 @@ Line *Stage::collide_line(const Line &other) const {
 		delete lines;
 	}
 	return NULL;
+}
+
+// For each block in the geometry, run a line collision
+// If there's a hit, store the line
+// If there's more than one common point between saved lines, that's the corner
+Vec2 *Stage::collide_corner(const Line &other) const {
+	std::set<Vec2> points;
+	Vec2 *ret = NULL;
+	for (std::list<Rect *>::const_iterator iter = geometry.begin();
+			iter != geometry.end(); iter++) {
+		std::vector<Line> *lines = block_borders(**iter);
+
+		for (std::vector<Line>::const_iterator liter = lines->begin();
+				liter != lines->end(); liter++) {
+			Vec2 *point = line_collision(other, *liter);
+			if (point) {
+				delete(point);
+				// Crap, this should be line, not point...
+				Vec2 p1(Vec2((*liter).x1, (*liter).y1));
+				if (points.find(p1) != points.end()) {
+					ret = new Vec2(p1);
+					break;
+				} else {
+					points.insert(p1);
+				}
+				Vec2 p2((*liter).x2, (*liter).y2);
+				if (points.find(p2) != points.end()) {
+					ret = new Vec2(p2);
+					break;
+				} else {
+					points.insert(p2);
+				}
+			}
+		}
+		points.clear();
+		delete lines;
+		if (ret) {
+			break;
+		}
+	}
+	return ret;
+
 }
 
 const std::list<Rect*> &Stage::get_geometry() const {

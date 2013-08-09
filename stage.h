@@ -16,8 +16,8 @@ class Stage {
 
 		const Rect &get_bounds() const;
 
-		Line *collide_line(const Rect &in) const;
-		Line *collide_corner(const Rect &in) const;
+		Line *collide_line(const Line &in) const;
+		Vec2 *collide_corner(const Line &in) const;
 	private:
 
 		std::list<Rect*> geometry;

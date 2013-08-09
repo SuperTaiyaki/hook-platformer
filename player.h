@@ -31,6 +31,8 @@ class Player {
 		Hook hook;
 
 		std::list<Vec2> hook_nodes;
+
+		void wrap_rope();
 };
 
 #endif // __player_h__

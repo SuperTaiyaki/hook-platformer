@@ -634,7 +634,8 @@ while 1:
     ts = counter.tick() / 1000.0
     # TODO: cap ts to ensure physics don't break
 
-    player.push((dir_x*500, dir_y*500))
+    #player.push((dir_x*500, dir_y*500))
+    player.push((dir_x*1000, dir_y*1000))
 
     if not pause:
         hook.update(ts)

@@ -22,6 +22,13 @@ Vec2 &Vec2::operator-=(const Vec2 &rhs) {
 	return *this;
 }
 
+Vec2 &Vec2::operator*=(const float rhs) {
+	x *= rhs;
+	y *= rhs;
+
+	return *this;
+}
+
 Vec2 operator*(const Vec2 &lhs, const float rhs) {
 	Vec2 ret = lhs;
 	ret.x *= rhs;
@@ -185,6 +192,13 @@ float vec2_project(const Vec2 &src, const Vec2 &dst) {
 	Vec2 dstn = dst;
 	dstn.normalize();
 	return src.x * dstn.x + src.y * dstn.y;
+}
+
+Vec2 vec2_reject(const Vec2 &src, const Vec2 &dst) {
+	Vec2 dstp = dst;
+	dstp.normalize();
+	dstp *= src.x * dstp.x + src.y * dstp.y;
+	return src - dstp;
 }
 
 float angle_diff(const Vec2 &a1, const Vec2 &a2) {

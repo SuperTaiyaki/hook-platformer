@@ -1,7 +1,8 @@
-#define PLAYER_SPEED_X 100
-#define PLAYER_SPEED_Y 100
+#define PLAYER_SPEED_X 50
+#define PLAYER_SPEED_Y 50
 #define GRAVITY 100
-#define PULL_FORCE 500
+#define PULL_FORCE 1000
+#define RETRACT_FORCE 1000
 
 #define HOOK_SPEED 500
 

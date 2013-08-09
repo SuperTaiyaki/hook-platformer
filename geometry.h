@@ -18,6 +18,8 @@ class Vec2 {
 		// There are only getting added as they're needed
 		Vec2 &operator+=(const Vec2 &rhs);
 		Vec2 &operator-=(const Vec2 &rhs);
+
+		Vec2 &operator*=(const float rhs);
 		void normalize();
 };
 Vec2 operator*(const Vec2 &lhs, const float rhs);
@@ -45,6 +47,7 @@ void vec2_bounce(const Line &axis, Vec2 &point);
 
 // project src onto dst
 float vec2_project(const Vec2 &src, const Vec2 &dst);
+Vec2 vec2_reject(const Vec2 &src, const Vec2 &dst);
 // difference between 2 angles, adjusted to be [-pi <= x < pi]
 float angle_diff(const Vec2 &a1, const Vec2 &a2);
 // sqrt(x^2 + y^2) - std::hypot only available in c++11

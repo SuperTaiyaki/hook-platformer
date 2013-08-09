@@ -31,6 +31,7 @@ void Player::rope_retract(float ts) {
 		rope_vec.normalize();
 
 		Vec2 hook_motion = hook.velocity;
+		print_vec2("Hook velocity before", hook_motion);
 
 		// Braking
 		// Insert player's velocity as outward movement, so the end gets dragged around correctly
@@ -38,6 +39,7 @@ void Player::rope_retract(float ts) {
 			const Vec2 &pull_point = node_2();
 			Vec2 pull_vec = position - pull_point;
 
+			// Could probably simplify this by just adding to the other outward_ calculation
 			float outward_component = vec2_project(velocity, pull_vec);
 			if (outward_component > 0) {
 				std::cout << "Player pulling\n";
@@ -51,10 +53,11 @@ void Player::rope_retract(float ts) {
 			hook.velocity -= rope_vec * outward_component;
 		}
 
-		// Braking done, now pull in a bit
-		hook.velocity -= hook.velocity * (ts * 10);
+		// Completely elimininates flopping around
+		const Vec2 &rejection = vec2_reject(hook.velocity, rope_vec);
+		hook.velocity -= rejection;
 
-		hook.velocity += rope_vec * 4000 * ts;
+		hook.velocity += rope_vec * RETRACT_FORCE * ts;
 	}
 }
 
@@ -86,16 +89,17 @@ void Player::update(float ts) {
 			vec2_bounce(*collision, velocity);
 		}
 
-		position += velocity * ts;
+		//position += velocity * ts;
+
 	}
 	if (hook.is_active()) {
-		hook.update(ts);
 
 		// Trim excess nodes first
 		if (!release_window && hook_nodes.size() == 2 && dist2(position, hook.get_position()) < NODE_MIN_DISTANCE) {
 			std::cout << "Short range deleted\n";
 			hook.deactivate();
 			hook_nodes.clear();
+			position += velocity * ts;
 		} else {
 			if (pull) {
 				rope_retract(ts);
@@ -121,11 +125,16 @@ void Player::update(float ts) {
 
 			wrap_rope();
 
+			hook.update(ts);
+			position += velocity * ts;
 			// TODO: confirm if this copies in-place (maybe)
 			hook_nodes.front() = position;
 			hook_nodes.back() = hook.get_position();
 		}
+	} else {
+		position += velocity * ts;
 	}
+
 	return;
 
 }

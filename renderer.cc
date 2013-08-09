@@ -14,6 +14,7 @@ Renderer::Renderer(World *w): world(w) {
 	init_shaders();
 	init_geometry();
 	init_player();
+	init_rope();
 
 	return;
 }
@@ -120,9 +121,14 @@ void Renderer::draw_player() {
 	const Vec2 &pos = p.get_position();
 
 	glBindVertexArray(player_array);
+	glBindBuffer(GL_ARRAY_BUFFER, player_object);
 
-	Vec2 *mmap = (Vec2*)glMapBuffer(GL_ARRAY_BUFFER, GL_WRITE_ONLY);
-	*mmap = pos;
+	// Not using a Vec2 beacuse the vptr might make things messy
+	GLfloat *mmap = (GLfloat*)glMapBuffer(GL_ARRAY_BUFFER, GL_WRITE_ONLY);
+	mmap[0] = pos.x;
+	mmap[1] = pos.y; 
+//	Vec2 *mmap = (Vec2*)glMapBuffer(GL_ARRAY_BUFFER, GL_WRITE_ONLY);
+//	*mmap = pos;
 	glUnmapBuffer(GL_ARRAY_BUFFER);
 	glUniform3f(color_uniform, 1.0f, 0.0f, 0.0f);
 
@@ -150,7 +156,46 @@ void Renderer::init_player() {
 	return;
 }
 
+void Renderer::init_rope() {
+	glGenVertexArrays(1, &rope_array);
+	glBindVertexArray(rope_array);
+
+	glGenBuffers(1, &rope_object);
+	glBindBuffer(GL_ARRAY_BUFFER, rope_object);
+	// Possible optimization: pre-allocate a decent buffer, instead of constantly resizing
+	glBufferData(GL_ARRAY_BUFFER, sizeof(GLfloat) * 2 * 2, NULL, GL_DYNAMIC_DRAW);
+	rope_buffer_size = 2;
+	glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 0, 0);
+	glEnableVertexAttribArray(0);
+}
+
 void Renderer::draw_rope() {
+
+	const std::list<Vec2> &nodes = world->get_player().get_rope_path();
+	if (nodes.size() < 2) {
+		return;
+	}
+
+	glBindVertexArray(rope_array);
+	glBindBuffer(GL_ARRAY_BUFFER, rope_object);
+	if (nodes.size() > rope_buffer_size) {
+		// Should this just double the size until it hits rope_buffer_size?
+		glBufferData(GL_ARRAY_BUFFER, sizeof(GLfloat) * 2 * nodes.size(), NULL, GL_DYNAMIC_DRAW);
+		rope_buffer_size = nodes.size();
+	}
+
+	GLfloat *mmap = (GLfloat *)glMapBuffer(GL_ARRAY_BUFFER, GL_WRITE_ONLY);
+	for (std::list<Vec2>::const_iterator iter = nodes.begin();
+			iter != nodes.end(); iter++) {
+		// Bulk copy would be nice...
+		*mmap++ = (*iter).x;
+		*mmap++ = (*iter).y;
+	}
+
+	glUnmapBuffer(GL_ARRAY_BUFFER);
+
+	glUniform3f(color_uniform, 0, 0, 1);
+	glDrawArrays(GL_LINE_STRIP, 0, nodes.size());
 	return;
 }
 

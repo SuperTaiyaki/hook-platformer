@@ -21,6 +21,7 @@ class Renderer {
 		void init_player();
 		void draw_player();
 
+		void init_rope();
 		void draw_rope();
 
 		void init_shaders();
@@ -29,8 +30,10 @@ class Renderer {
 		GLuint vshader, fshader, shaderprogram, viewport_uniform, color_uniform;
 		GLuint geometry_array, geometry_object;
 		GLuint player_array, player_object;
+		GLuint rope_array, rope_object;
+		unsigned int rope_buffer_size;
 
-		int geometry_vertices;
+		unsigned int geometry_vertices;
 
 };
 

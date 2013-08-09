@@ -18,6 +18,7 @@ class Vec2 {
 };
 Vec2 operator*(const Vec2 &lhs, const float rhs);
 Vec2 operator+(const Vec2 &lhs, const Vec2 &rhs);
+Vec2 operator-(const Vec2 &lhs, const Vec2 &rhs);
 
 // Convention: bottom left, top right (i.e. lower coords, then higher coords
 class Rect {
@@ -36,5 +37,18 @@ typedef Rect Line; // actually a segment
 Vec2 *line_collision(const Line &l1, const Line &l2);
 // Reflect point in axis
 void vec2_bounce(const Line &axis, Vec2 &point);
+
+// project src onto dst
+float vec2_project(const Vec2 &src, const Vec2 &dst);
+// difference between 2 angles, adjusted to be [-pi <= x < pi]
+float angle_diff(const Vec2 &a1, const Vec2 &a2);
+// sqrt(x^2 + y^2) - std::hypot only available in c++11
+// Doesn't do the error-minimising stuff
+float hypot(const float x, const float y);
+float hypot(const Vec2 &segment);
+float hypot(const Line &segment);
+
+void print_vec2(std::string prefix, const Vec2 &in);
+void print_line(std::string prefix, const Line &in);
 
 #endif //__geometry_h__

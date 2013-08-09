@@ -30,6 +30,7 @@ enum Keys {
 	LAST_KEY
 };
 bool key_states[LAST_KEY];
+bool key_last_state[LAST_KEY];
 int mouse_pos[2];
 int window_size[2] = {WINDOW_WIDTH, WINDOW_HEIGHT};
 
@@ -66,7 +67,7 @@ void render() {
 	}
 
 	// TODO: edge trigger, not level trigger
-	if (key_states[FIRE]) {
+	if (key_states[FIRE] && not key_last_state[FIRE]) {
 		// Get it into world coordinates
 		float screen_coords[2];
 		screen_coords[0] = (float)mouse_pos[0] / window_size[0];
@@ -78,6 +79,8 @@ void render() {
 		world_coords[1] = viewport.y1 + (viewport.y2 - viewport.y1) * screen_coords[1];
 		player->fire(world_coords[0], world_coords[1]);
 	}
+
+	key_last_state[FIRE] = key_states[FIRE];
 	player->control(x, y);
 
 	world->update(timestep);

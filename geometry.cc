@@ -26,6 +26,13 @@ Vec2 operator+(const Vec2 &lhs, const Vec2 &rhs) {
 	return ret;
 }
 
+Vec2 operator-(const Vec2 &lhs, const Vec2 &rhs) {
+	Vec2 ret = lhs;
+	ret.x -= rhs.x;
+	ret.y -= rhs.y;
+	return ret;
+}
+
 float gradient(const Line &line) {
 	// No need to worry about infinites here?
 	return (line.y2 - line.y1) / (line.x2 - line.x1);
@@ -119,4 +126,39 @@ void vec2_bounce(const Line &axis, Vec2 &point) {
 	float ny = s2t * point.x - c2t * point.y;
 	point.x = nx;
 	point.y = ny;
+}
+
+float hypot(const float x, const float y) {
+	return std::sqrt(x*x+y*y);
+}
+float hypot(const Vec2 &segment) {
+	return hypot(segment.x, segment.y);
+}
+float hypot(const Line &segment) {
+	return hypot(segment.x2 - segment.x1, segment.y2 - segment.y1);
+}
+
+//TODO: rewrite this as a.^b? (shorter scalar projection definition)
+float vec2_project(const Vec2 &src, const Vec2 &dst) {
+	float angle = angle_diff(dst, src);
+	return std::cos(angle) * hypot(dst.x, dst.y);
+}
+
+float angle_diff(const Vec2 &a1, const Vec2 &a2) {
+	float dir_a1 = std::atan2(a1.y, a1.x);
+	float dir_a2 = std::atan2(a2.y, a2.x);
+	float angle = std::fmod(dir_a1 - dir_a2 + M_PI*2, M_PI*2);
+	if (angle > M_PI) {
+		angle -= M_PI * 2;
+	}
+	return angle;
+}
+
+void print_vec2(const std::string prefix, const Vec2 &in) {
+	std::cout << prefix << " X: " << in.x << " Y: " << in.y << "\n";
+}
+
+void print_line(const std::string prefix, const Line &in) {
+	std::cout << prefix << " 1: (" << in.x1 << "," << in.y1 <<
+		") 2: (" << in.x2 << "," << in.y2 << ")\n";
 }

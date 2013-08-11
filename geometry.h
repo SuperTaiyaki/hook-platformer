@@ -8,18 +8,21 @@ class Vec2 {
 	public:
 		Vec2(): x(0), y(0) {};
 		Vec2(float ix, float iy): x(ix), y(iy) {};
-		union {
-			float coords[2];
-			struct {
-				float x, y;
-			};
-		};
+		float x, y;
 		// Defining some useful stuff... hopefully not too haphazard
 		// There are only getting added as they're needed
 		Vec2 &operator+=(const Vec2 &rhs);
 		Vec2 &operator-=(const Vec2 &rhs);
 
 		Vec2 &operator*=(const float rhs);
+		float &operator[](unsigned i) {
+			if (i == 0)
+				return x;
+			else if (i == 1)
+				return y;
+			// explode!
+			throw 0;
+		}
 		void normalize();
 };
 Vec2 operator*(const Vec2 &lhs, const float rhs);
@@ -32,12 +35,8 @@ class Rect {
 public:
 	Rect(float ix1, float iy1, float ix2, float iy2): x1(ix1), y1(iy1), x2(ix2), y2(iy2){};
 	Rect(const Vec2 &p1, const Vec2 &p2): x1(p1.x), y1(p1.y), x2(p2.x), y2(p2.y){};
-	union {
-		float coords[4];
-		struct {
-			float x1, y1, x2, y2;
-		};
-	};
+	float x1, y1, x2, y2;
+	// Apparently unioning this to an array isn't valid C++ - it's never passed around as an array anyway.
 };
 typedef Rect Line; // actually a segment
 

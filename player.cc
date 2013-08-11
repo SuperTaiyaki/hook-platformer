@@ -205,7 +205,7 @@ void Player::unwrap_rope() {
 		// unwrap!
 		iter++;
 		hook_nodes.erase(iter);
-		// Recalculate rope_angle_player
+		rope_angle_player = node_angle(hook_nodes.begin());
 	}
 
 }

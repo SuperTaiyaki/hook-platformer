@@ -71,8 +71,6 @@ std::auto_ptr<Line> Stage::collide_line(const Line &other) const {
 				liter != lines->end(); liter++) {
 			std::auto_ptr<Vec2> point = line_collision(other, *liter);
 			if (point.get()) {
-				//auto_ptr!
-				//delete point;
 				return std::auto_ptr<Line>(new Line(*liter));
 			}
 		}

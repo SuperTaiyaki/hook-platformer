@@ -79,10 +79,11 @@ void render() {
 		world_coords[1] = viewport.y1 + (viewport.y2 - viewport.y1) * screen_coords[1];
 		player->trigger(world_coords[0], world_coords[1]);
 	}
-
 	key_last_state[FIRE] = key_states[FIRE];
+
 	player->control(x, y);
 	player->retract(key_states[RETRACT]);
+	player->jump(key_states[JUMP]);
 
 	world->update(timestep);
 
@@ -106,6 +107,8 @@ Keys key_map(int key) {
 		case ',':
 		case 'w':
 			return UP;
+		case ' ':
+			return JUMP;
 	}
 	return LAST_KEY;
 }
@@ -176,6 +179,7 @@ void osd_init(int argc, char *argv[]) {
 	glutInitContextFlags(GLUT_FORWARD_COMPATIBLE); // ???
 
 	glutInitWindowSize(WINDOW_WIDTH, WINDOW_HEIGHT);
+	glutInitWindowPosition(100, 100);
 	glutInitDisplayMode(GLUT_DEPTH | GLUT_DOUBLE | GLUT_RGBA);
 
 	int windowHandle = glutCreateWindow("aoeu");

@@ -21,18 +21,18 @@ class Player {
 		void control(float x, float y);
 		void trigger(float x, float y);
 		void retract(int value);
+		void jump(int value); //jump, also probably impact bounce
 
 		const Vec2 &get_position() const;
 		const std::list<Vec2> &get_rope_path() const;
 	private:
 		Vec2 position;
 		Vec2 velocity;
+		Vec2 target_velocity;
 		Vec2 f_accum;
 		World &world;
 
 		Hook hook;
-		int release_window;
-		int pull;
 
 		std::list<Vec2> hook_nodes;
 		float rope_angle_player;
@@ -40,10 +40,17 @@ class Player {
 
 		float node_angle(std::list<Vec2>::const_iterator iter) const;
 
+		// flags
+		unsigned int onground :1;
+		unsigned int release_window :1;
+		unsigned int pull :1;
+		unsigned int bounce :1;
+
 		void wrap_rope();
 		void unwrap_rope();
 		void rope_retract(float ts);
 		void rope_brake();
+		void merge_movement(float ts);
 
 		const Vec2 &node_2() const; // 2nd node in the list
 };

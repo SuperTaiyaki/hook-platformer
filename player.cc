@@ -22,6 +22,7 @@ void Player::rope_retract(float ts) {
 		Vec2 rope_vec = pull_point - position;
 		rope_vec.normalize();
 		push(rope_vec.x * PULL_FORCE, rope_vec.y * PULL_FORCE);
+		// TODO: cap the max speed
 	} else { // hook being retracted
 		// Given that this is basically cosmetic, it's a lot of work!
 		std::list<Vec2>::const_reverse_iterator iter = hook_nodes.rbegin();
@@ -70,9 +71,73 @@ void Player::rope_brake() {
 	}
 }
 
+void Player::merge_movement(float ts) {
+#if 0
+	// cases:
+	// from 0 -> PLAYER_ACCELERATIION
+	// same direction, increasing -> PLAYER_ACCELERATION
+	// same direction, decreasing -> PLAYER_BRAKING
+	// opposite direction -> PLAYER_BRAKING
+	print_vec2("Target velocity", target_velocity);
+	//for (int axis = 0; axis < 2; axis++) {
+	for (int axis = 0; axis < 1; axis++) {
+		if (velocity[axis] == target_velocity[axis]) {
+			std::cout << "No speed correction\n";
+			continue;
+		}
+		if (velocity[axis] != 0 && copysign(target_velocity[axis], velocity[axis]) !=
+				target_velocity[axis]) {
+			// Braking - more force
+			std::cout << "Reverse braking\n";
+			velocity[axis] += copysign(PLAYER_BRAKING*ts, target_velocity[axis]);
+			if (fabs(velocity[axis]) < fabs(target_velocity[axis])) {
+				velocity[axis] = target_velocity[axis];
+			}
+		} else {
+			if (fabs(velocity[axis]) < fabs(target_velocity[axis])) {
+				std::cout << "standard accel\n";
+				velocity[axis] += copysign(PLAYER_ACCELERATION * ts, target_velocity[axis]);
+				if (fabs(velocity[axis]) > fabs(target_velocity[axis])) {
+					velocity[axis] = target_velocity[axis];
+				}
+			} else {
+				std::cout << "overspeed deceleration\n";
+				velocity[axis] -= copysign(PLAYER_BRAKING * ts, velocity[axis]);
+				// different sign from above!
+				// Urgh, need to account for crossing 0...
+				if (fabs(velocity[axis]) < fabs(target_velocity[axis])) {
+					velocity[axis] = target_velocity[axis];
+				}
+			}
+
+		}
+	}
+#else
+// Borrowed from Quake 3
+	if (!onground) {
+		if (target_velocity.x == 0 && target_velocity.y == 0) {
+			// just drift
+			return;
+		}
+		// Yes, diagonal movement is faster.
+		velocity += target_velocity * ts;
+		return;
+	}
+	
+	Vec2 dir = target_velocity - velocity;
+	float len = hypot(dir);
+	if (len > ts * PLAYER_ACCELERATION) {
+		dir *= (ts*PLAYER_ACCELERATION) / len;
+	}
+	velocity += dir;
+
+#endif
+}
+
 void Player::update(float ts) {
 
-
+	merge_movement(ts);
+	
 	velocity.y -= GRAVITY * ts;
 	velocity += f_accum * ts;
 	f_accum.x = f_accum.y = 0;
@@ -82,22 +147,43 @@ void Player::update(float ts) {
 		Line movement(position, next_pos);
 
 		std::auto_ptr<Line> collision = world.collide_line(movement);
+
+		// Continous collision physics
+		onground = 0;
 		if (collision.get()) {
-			print_line("Collision ", *collision);
-			vec2_bounce(*collision, velocity);
+			//print_line("Collision ", *collision);
+			// Vector rejection -> sliding!
+			if (bounce) {
+				vec2_bounce(*collision, velocity);
+				// TODO: Cut or cap velocity
+			} else {
+				float vy_before = velocity.y;
+				Vec2 collision_angle = Vec2(collision->y2 - collision->y1,
+						collision->x2 - collision->x1);
+				velocity = vec2_reject(velocity, collision_angle);
+
+				// TODO: bump right up against the surface
+				// Not going to work quite right with non-perpendicular geometry
+				if (vy_before < 0 && velocity.y == 0) {
+					onground = 1;
+				}
+
+				//applies to both ground movement and sliding _into_ blocks
+				velocity -= velocity*1*ts;
+			}
 		}
 
-		//position += velocity * ts;
+		position += velocity * ts;
 
 	}
 	if (hook.is_active()) {
 
 		// Trim excess nodes first
-		if (!release_window && hook_nodes.size() == 2 && dist2(position, hook.get_position()) < NODE_MIN_DISTANCE) {
+		if (!release_window && hook_nodes.size() == 2 &&
+				dist2(*hook_nodes.begin(), node_2()) < NODE_MIN_DISTANCE) {
 			std::cout << "Short range deleted\n";
 			hook.deactivate();
 			hook_nodes.clear();
-			position += velocity * ts;
 		} else {
 			if (pull) {
 				rope_retract(ts);
@@ -112,9 +198,13 @@ void Player::update(float ts) {
 					std::cout << "Node deleted player end\n";
 					hook_nodes.erase(iter);
 				}
+				if (hook_nodes.size() < 2) {
+					std::cout << "Deleted last node!\n";
+				}
 			} else {
 				release_window = 0;
 			}
+
 			if (!hook.stuck) {
 				// reverse iterators are confusing
 				//std::list<Vec2>::reverse_iterator iter2 = hook_nodes.rbegin();
@@ -135,15 +225,11 @@ void Player::update(float ts) {
 			wrap_rope();
 
 			hook.update(ts);
-			position += velocity * ts;
 			// TODO: confirm if this copies in-place (maybe)
 			hook_nodes.front() = position;
 			hook_nodes.back() = hook.get_position();
 		}
-	} else {
-		position += velocity * ts;
 	}
-
 	return;
 
 }
@@ -205,19 +291,39 @@ void Player::unwrap_rope() {
 		// unwrap!
 		iter++;
 		hook_nodes.erase(iter);
-		rope_angle_player = node_angle(hook_nodes.begin());
+		if (hook_nodes.size() > 2) {
+			rope_angle_player = node_angle(hook_nodes.begin());
+		}
 	}
-
+	// Rope retraction is now perfectly linear, so no unwrapping on the other end
 }
 
 void Player::control(float x, float y) {
 #if 1
+	if (onground) {
+		target_velocity.y = 0;
+		target_velocity.x = x * PLAYER_GROUND_SPEED;
+	} else {
+		target_velocity.x = x * PLAYER_AIR_SPEED;
+		target_velocity.y = y * PLAYER_AIR_SPEED;
+	}
+
+#elif 0
 	velocity.x += x * PLAYER_SPEED_X;
 	velocity.y += y * PLAYER_SPEED_Y;
 #else
 	velocity.y = y * PLAYER_SPEED_X;
 	velocity.x = x * PLAYER_SPEED_X;
 #endif
+}
+
+void Player::jump(int value) {
+	if (onground) {
+		target_velocity.y = 10000;
+	} else {
+		// I'm kind of surprised gcc doesn't say anything about the type mismatch...
+		bounce = value;
+	}
 }
 
 void Player::trigger(float x, float y) {

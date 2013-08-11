@@ -48,15 +48,23 @@ void vec2_bounce(const Line &axis, Vec2 &point);
 // project src onto dst
 float vec2_project(const Vec2 &src, const Vec2 &dst);
 Vec2 vec2_reject(const Vec2 &src, const Vec2 &dst);
+
+// regular cross product
+//Vec2 vec2_cross(const Vec2 &a, const Vec2 &b);
+
 // difference between 2 angles, adjusted to be [-pi <= x < pi]
 float angle_diff(const Vec2 &a1, const Vec2 &a2);
+
 // sqrt(x^2 + y^2) - std::hypot only available in c++11
 // Doesn't do the error-minimising stuff
 float hypot(const float x, const float y);
 float hypot(const Vec2 &segment);
 float hypot(const Line &segment);
+
 // Distance between points squared
 float dist2(const Vec2 &a, const Vec2 &b);
+
+
 
 void print_vec2(std::string prefix, const Vec2 &in);
 void print_line(std::string prefix, const Line &in);

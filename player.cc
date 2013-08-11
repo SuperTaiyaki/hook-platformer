@@ -129,6 +129,9 @@ void Player::update(float ts) {
 				}
 			}
 
+			if (hook_nodes.size() > 2) {
+				unwrap_rope();
+			}
 			wrap_rope();
 
 			hook.update(ts);
@@ -154,7 +157,9 @@ void Player::wrap_rope() {
 	std::auto_ptr<Vec2> collision = world.collide_corner(segment);
 	if (collision.get()) {
 		hook_nodes.insert(iter, *collision);
+		rope_angle_player = node_angle(hook_nodes.begin());
 		std::cout << "Collided is now " << hook_nodes.size() << " points\n";
+		std::cout << "Angle: " << rope_angle_player << "\n";
 	}
 
 	// Geometry isn't mobile, so only the first and last segments can actually move
@@ -177,6 +182,32 @@ void Player::wrap_rope() {
 
 	}
 */
+}
+
+// Calculate the angle between the next 3 nodes under the iterator
+float Player::node_angle(std::list<Vec2>::const_iterator iter) const {
+	const Vec2 &node1 = *iter++;
+	const Vec2 &node2 = *iter++;
+	const Vec2 &node3 = *iter;
+
+	Vec2 seg1 = node1 - node2;
+	Vec2 seg2 = node3 - node2;
+
+	return angle_diff(seg1, seg2);
+}
+
+void Player::unwrap_rope() {
+	// Player end
+	std::list<Vec2>::iterator iter = hook_nodes.begin();
+	float angle = node_angle(iter);
+
+	if (copysign(rope_angle_player, angle) != rope_angle_player) {
+		// unwrap!
+		iter++;
+		hook_nodes.erase(iter);
+		// Recalculate rope_angle_player
+	}
+
 }
 
 void Player::control(float x, float y) {

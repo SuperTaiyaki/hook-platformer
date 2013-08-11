@@ -35,8 +35,13 @@ class Player {
 		int pull;
 
 		std::list<Vec2> hook_nodes;
+		float rope_angle_player;
+		float rope_angle_hook;
+
+		float node_angle(std::list<Vec2>::const_iterator iter) const;
 
 		void wrap_rope();
+		void unwrap_rope();
 		void rope_retract(float ts);
 		void rope_brake();
 

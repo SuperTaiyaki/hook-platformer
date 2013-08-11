@@ -11,6 +11,7 @@ bool Hook::is_active() const {
 
 void Hook::release() {
 	stuck = 0;
+	retracting = 1;
 }
 
 void Hook::deactivate() {
@@ -23,6 +24,7 @@ void Hook::launch(const Vec2 &origin, const Vec2 &aim) {
 	position = origin;
 	active = 1;
 	stuck = 0;
+	retracting = 0;
 	return;
 }
 
@@ -35,7 +37,7 @@ void Hook::update(float ts) {
 		Line movement(position, next_pos);
 
 		std::auto_ptr<Line> collision = world.collide_line(movement);
-		if (collision.get()) {
+		if (!retracting && collision.get()) {
 			//vec2_bounce(*collision, velocity);
 			std::cout << "Hook caught\n";
 			stuck = 1;

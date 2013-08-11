@@ -181,7 +181,6 @@ float dist2(const Vec2 &a, const Vec2 &b) {
 	return x*x + y*y;
 }
 
-//TODO: rewrite this as a.^b? (shorter scalar projection definition)
 /*
 float vec2_project(const Vec2 &src, const Vec2 &dst) {
 	float angle = angle_diff(dst, src);
@@ -219,3 +218,4 @@ void print_line(const std::string prefix, const Line &in) {
 	std::cout << prefix << " 1: (" << in.x1 << "," << in.y1 <<
 		") 2: (" << in.x2 << "," << in.y2 << ")\n";
 }
+

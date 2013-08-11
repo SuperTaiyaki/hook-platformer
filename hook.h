@@ -20,6 +20,7 @@ class Hook {
 		Vec2 velocity;
 		bool stuck;
 		bool active;
+		bool retracting;
 
 		World &world;
 

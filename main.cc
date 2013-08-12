@@ -212,10 +212,11 @@ int main(int argc, char *argv[]) {
 	osd_init(argc, argv);
 
 	world = new World();
-	player = new Player(0, 10, *world);
-	world->set_player(player);
-	stage = new Stage();
+	stage = new Stage("test1.stg");
 	world->set_stage(stage);
+	const Vec2 &player_origin = stage->get_origin();
+	player = new Player(player_origin.x, player_origin.y, *world);
+	world->set_player(player);
 	// populate world as necessary
 	renderer = new Renderer(world);
 

@@ -1,5 +1,6 @@
 #include "stdlib.h"
 #include <iostream>
+#include <fstream>
 #include <set>
 
 #include "stage.h"
@@ -15,6 +16,41 @@ Stage::Stage(): bounds(Rect(-STAGE_WIDTH/2.0f, 0.0f, STAGE_WIDTH/2.0f, STAGE_HEI
 	generate_climb();
 	return;
 }
+
+Stage::Stage(const char *filename):
+	bounds(Rect(-STAGE_WIDTH/2.0f, 0.0f, STAGE_WIDTH/2.0f, STAGE_HEIGHT)){
+	load_stage(filename);
+}
+
+void Stage::load_stage(const char *filename) {
+	std::ifstream file(filename);
+	char type;
+
+	file >> type;
+	while (type) {
+		switch(type) {
+			case 'b':
+				float x1, y1, x2, y2;
+				file >> x1 >> y1 >> x2 >> y2;
+				char flags;
+				file >> flags;
+				geometry.push_back(new Rect(x1, y1, x2, y2));
+				std::cout << "Added block\n";
+				break;
+			case 'p':
+				float x, y;
+				file >> x >> y;
+				// for now, only origin is available...
+				origin = Vec2(x, y);
+		}
+		file >> type;
+		if (file.eof()) {
+			break;
+		}
+	}
+	file.close();
+}
+
 Stage::~Stage() {
 	// UNTESTED
 	if (!geometry.empty()) {
@@ -142,4 +178,6 @@ const Rect &Stage::get_bounds() const {
 	return bounds;
 }
 
-
+const Vec2 &Stage::get_origin() const {
+	return origin;
+}

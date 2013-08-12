@@ -9,21 +9,25 @@
 class Stage {
 	public:
 		Stage();
+		Stage(const char* filename);
 		~Stage();
 
-		const Rect bounds;// = Rect(-STAGE_WIDTH/2.0f, 0.0f, STAGE_WIDTH/2.0f, STAGE_HEIGHT);
 		const std::list<Rect*> &get_geometry() const;
 
 		const Rect &get_bounds() const;
+		const Vec2 &get_origin() const;
 
 		std::auto_ptr<Line> collide_line(const Line &in) const;
 		std::auto_ptr<Vec2> collide_corner(const Line &in) const;
 	private:
 
+		Rect bounds;
 		std::list<Rect*> geometry;
+		Vec2 origin;
 
 		void generate_border();
 		void generate_climb();
+		void load_stage(const char*filename);
 
 		std::auto_ptr<std::vector<Line> > block_borders(Rect &in) const;
 };

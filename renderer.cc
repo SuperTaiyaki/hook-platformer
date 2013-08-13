@@ -30,10 +30,10 @@ Renderer::~Renderer() {
 // Yay compatibility
 void draw_dots() {
 	glBegin(GL_POINTS);
-	for (std::vector<Vec2>::const_iterator iter = dots.begin();
+	/*for (std::vector<Vec2>::const_iterator iter = dots.begin();
 				iter != dots.end(); iter++) {
 		glVertex2f((*iter).x, (*iter).y);
-	}
+	}*/
 	glEnd();
 
 	dots.erase(dots.begin(), dots.end());

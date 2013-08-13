@@ -11,7 +11,7 @@ class World;
 class Player {
 	public:
 		// Do velocity and f_accum get zeroed...?
-		Player(float x, float y, World &w): position(x, y), world(w), hook(w),
+		Player(float x, float y, World &w): position(x, y), contact_surface(NULL), world(w), hook(w),
 			pull(0), bounce(0) {};
 		~Player();
 
@@ -53,6 +53,8 @@ class Player {
 		void rope_retract(float ts);
 		void rope_brake();
 		void merge_movement(float ts);
+		void check_collisions(float ts);
+		void update_hook(float ts);
 
 		const Vec2 &node_2() const; // 2nd node in the list
 };

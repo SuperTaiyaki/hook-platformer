@@ -72,49 +72,8 @@ void Player::rope_brake() {
 }
 
 void Player::merge_movement(float ts) {
-#if 0
-	// cases:
-	// from 0 -> PLAYER_ACCELERATIION
-	// same direction, increasing -> PLAYER_ACCELERATION
-	// same direction, decreasing -> PLAYER_BRAKING
-	// opposite direction -> PLAYER_BRAKING
-	print_vec2("Target velocity", target_velocity);
-	//for (int axis = 0; axis < 2; axis++) {
-	for (int axis = 0; axis < 1; axis++) {
-		if (velocity[axis] == target_velocity[axis]) {
-			std::cout << "No speed correction\n";
-			continue;
-		}
-		if (velocity[axis] != 0 && copysign(target_velocity[axis], velocity[axis]) !=
-				target_velocity[axis]) {
-			// Braking - more force
-			std::cout << "Reverse braking\n";
-			velocity[axis] += copysign(PLAYER_BRAKING*ts, target_velocity[axis]);
-			if (fabs(velocity[axis]) < fabs(target_velocity[axis])) {
-				velocity[axis] = target_velocity[axis];
-			}
-		} else {
-			if (fabs(velocity[axis]) < fabs(target_velocity[axis])) {
-				std::cout << "standard accel\n";
-				velocity[axis] += copysign(PLAYER_ACCELERATION * ts, target_velocity[axis]);
-				if (fabs(velocity[axis]) > fabs(target_velocity[axis])) {
-					velocity[axis] = target_velocity[axis];
-				}
-			} else {
-				std::cout << "overspeed deceleration\n";
-				velocity[axis] -= copysign(PLAYER_BRAKING * ts, velocity[axis]);
-				// different sign from above!
-				// Urgh, need to account for crossing 0...
-				if (fabs(velocity[axis]) < fabs(target_velocity[axis])) {
-					velocity[axis] = target_velocity[axis];
-				}
-			}
-
-		}
-	}
-#else
 // Borrowed from Quake 3
-	if (!onground) {
+	if (!contact_surface) {
 		if (target_velocity.x == 0 && target_velocity.y == 0) {
 			// just drift
 			return;
@@ -123,68 +82,111 @@ void Player::merge_movement(float ts) {
 		velocity += target_velocity * ts;
 		return;
 	}
-	
+
 	// On ground, no vertical control (jump is separate)
+	// x is basically vector along the surface, rather than actual x
+	// Assuming axis-aligned geometry... don't feel like fixing this up to the general case for now
 	float diff = target_velocity.x - velocity.x;
 	if (fabs(diff) > ts * PLAYER_ACCELERATION) {
-		// one-dimensional... 
 		diff = copysign(ts*PLAYER_ACCELERATION, diff);
 	}
 	velocity.x += diff;
-
-#endif
 }
 
 void Player::update(float ts) {
+	//std::cout<< "-----FRAME START------";
 
 	merge_movement(ts);
 
 	velocity.y -= GRAVITY * ts;
+	// if player is standing on a flat surface, don't let the rope pull them through it
+	if (contact_surface && f_accum.y < 0)
+		f_accum.y = 0;
+	
 	velocity += f_accum * ts;
 	f_accum.x = f_accum.y = 0;
 
-	if (velocity.x || velocity.y) {
-		Vec2 velocity_n = velocity;
-		velocity_n.normalize();
-		// Collision vector is radius of player + movement for next frame
-		// TODO: this doesn't actually work right, because the direction is wrong
-		// Maybe project 2 vectors, COLLISION_RANGE apart, parallel to the actual movement vector
-		Vec2 next_pos = position + velocity * ts;
-		next_pos += velocity_n * COLLISION_RANGE;
-		Line movement(position, next_pos);
+	check_collisions(ts);
+	position += velocity * ts;
 
-		// Hrm, this might lead to weirdness if there's a protrusion narrower than COLLISION_RANGE...
+	if (hook.is_active()) {
+		update_hook(ts);
+	}
+	return;
 
-		// Issue: Slamming into a surface -> want to position at collision_point - (normal*radius)
-		// Moving along a surface -> don't want to sap velocity, so want to be at finishing_point, adjusted to
-		// be outside the surface
-		Vec2 offset(0, 0);
-		std::auto_ptr<std::pair<Line, Vec2> > collision = world.collide_line(movement);
-		if (!collision.get()) {
-			offset = Vec2(-velocity_n.y, velocity_n.x);
-			offset *= COLLISION_RANGE/2.0f;
-			collision = world.collide_line(Line(position + offset, next_pos + offset));
+}
+
+void Player::check_collisions(float ts) {
+	// Attempt at surface-tracking physics
+	// Collision with a surface with a slope less than 45 degrees off flat -> record to contact_surface
+	// Run collision as usual (2- or 3- vector scans). If collision with something collinear with
+	// contact_surface -> just follow movement
+	// any other surface -> run old-style collision
+	Vec2 velocity_n = velocity;
+	velocity_n.normalize();
+
+	Vec2 next_pos = position + velocity * ts;
+	next_pos += velocity_n * COLLISION_RANGE;
+	Line movement(position, next_pos);
+
+	std::auto_ptr<std::pair<Line, Vec2> > collision = world.collide_line(movement);
+	Vec2 offset(0, 0);
+	if (!collision.get()) {
+		offset = Vec2(-velocity_n.y, velocity_n.x);
+		offset *= COLLISION_RANGE;
+		collision = world.collide_line(Line(position + offset, next_pos + offset));
+	}
+	if (!collision.get()) {
+		offset *= -1;
+		collision = world.collide_line(Line(position + offset, next_pos + offset));
+	}
+
+	onground = 0;
+	if (collision.get()) {
+		// Special case
+		// If the player is sliding upwards or downwards on a vertical
+		// surface, the collision will trip as they hit the top or bottom of the edge
+		// (i.e. hitting the inside of the block). Smooth it over
+
+		if (collision->first.y1 == collision->first.y2 && (
+					collision->second.x == collision->first.x1 || collision->second.x == collision->first.x2)) {
+			// Collision? What collision?
+			return;
 		}
-		if (!collision.get()) {
-			offset *= -1;
-			collision = world.collide_line(Line(position + offset, next_pos + offset));
-		}
 
-		// Continous collision physics
-		onground = 0;
-		if (collision.get()) {
-			//print_line("Collision ", *collision);
-			// Vector rejection -> sliding!
-			if (bounce) {
-				vec2_bounce(collision->first, velocity);
-				// TODO: Cut or cap velocity
-				// TODO: adjust position a bit to account for distance covered before and after the
-				// bounce
-			} else {
-				float vy_before = velocity.y;
-				// No need to account for offset, because all the vectors are parallel
+		if (bounce) {
+			vec2_bounce(collision->first, velocity);
+			// TODO: Cut or cap velocity
+			// TODO: adjust position a bit to account for distance covered before and after the bounce
+		} else {
+			if (contact_surface) {
+				//Collinear -> keep, push
+				//otherwise -> delete it, fall through
+
+				// Uhh... parallel is close enough to collinear for this work, right?
+				Vec2 contact_vec(contact_surface->x2 - contact_surface->x1,
+					contact_surface->y2 - contact_surface->y1);
+
+				float m1 = contact_vec.y / contact_vec.x;
+				float m2 = (collision->first.y2 - collision->first.y1) /
+					(collision->first.x2 - collision->first.x1);
+
+				if (m1 != m2) {
+					delete contact_surface;
+					contact_surface = NULL;
+				} else {
+					// axis-aligned cheat...
+					velocity.y += GRAVITY * ts;
+				}
+			}
+			// not _else_ because the above can delete it
+			if (!contact_surface) {
+
 				Vec2 collision_angle = Vec2(collision->first.y2 - collision->first.y1,
-						collision->first.x2 - collision->first.x1);
+					collision->first.x2 - collision->first.x1);
+				//float vy_before = velocity.y;
+
+				// Vector rejection -> sliding!
 				velocity = vec2_reject(velocity, collision_angle);
 
 				// Push back from the collision point by COLLISION_RANGE
@@ -192,76 +194,88 @@ void Player::update(float ts) {
 						collision->first.x2 - collision->first.x1);
 				normal.normalize(); //normalized vector normal
 
-				// TODO: 
 				position = collision->second - normal * COLLISION_RANGE;
-				//position -= offset;
+
+				// If collision surface is less than 45 degrees off flat, store it as contact_surface (i.e.
+				// walkable surface)
+				// _and_ the player is above the contact point (i.e. not smacking something from below)
+				if (position.y > collision->second.y && velocity.y <= 0 && 
+						fabs(collision->first.y2 - collision->first.y1) < fabs(collision->first.x2 - collision->first.x1)) {
+					contact_surface = new Line(collision->first);
+				}
+
 				// Not going to work quite right with non-perpendicular geometry
-				if (vy_before < 0 && velocity.y == 0) {
+				/*if (vy_before < 0 && velocity.y == 0) {
 					onground = 1;
-				}
+				} */
 
-				//applies to both ground movement and sliding _into_ blocks
-				velocity -= velocity*1*ts;
+				//friction applies to both ground movement and sliding _into_ blocks
 			}
+			velocity -= velocity*1*ts;
 		}
-		position += velocity * ts;
-
+	} else {
+		if (contact_surface) {
+			std::cout << "No collision, removing surface\n";
+			delete contact_surface;
+			contact_surface = NULL;
+		}
 	}
-	if (hook.is_active()) {
 
-		// Trim excess nodes first
-		if (!release_window && hook_nodes.size() == 2 &&
-				dist2(*hook_nodes.begin(), node_2()) < NODE_MIN_DISTANCE) {
-			std::cout << "Short range deleted\n";
-			hook.deactivate();
-			hook_nodes.clear();
+}
+
+void Player::update_hook(float ts) {
+	// Trim excess nodes first
+	if (!release_window && hook_nodes.size() == 2 &&
+			dist2(*hook_nodes.begin(), node_2()) < NODE_MIN_DISTANCE) {
+		std::cout << "Short range deleted\n";
+		hook.deactivate();
+		hook_nodes.clear();
+	} else {
+		if (pull) {
+			rope_retract(ts);
+		}
+		if (hook.stuck) {
+			rope_brake();
+		}
+		std::list<Vec2>::iterator iter = hook_nodes.begin();
+		iter++;
+		if (dist2(hook_nodes.front(), *iter) < NODE_MIN_DISTANCE) {
+			if (!release_window) {
+				std::cout << "Node deleted player end\n";
+				hook_nodes.erase(iter);
+			}
+			if (hook_nodes.size() < 2) {
+				std::cout << "Deleted last node!\n";
+				// actually an error condition
+			}
 		} else {
-			if (pull) {
-				rope_retract(ts);
-			}
-			if (hook.stuck) {
-				rope_brake();
-			}
-			std::list<Vec2>::iterator iter = hook_nodes.begin();
-			iter++;
-			if (dist2(hook_nodes.front(), *iter) < NODE_MIN_DISTANCE) {
-				if (!release_window) {
-					std::cout << "Node deleted player end\n";
-					hook_nodes.erase(iter);
-				}
-				if (hook_nodes.size() < 2) {
-					std::cout << "Deleted last node!\n";
-				}
-			} else {
-				release_window = 0;
-			}
-
-			if (!hook.stuck) {
-				// reverse iterators are confusing
-				//std::list<Vec2>::reverse_iterator iter2 = hook_nodes.rbegin();
-				//iter2++; // .back()
-				std::list<Vec2>::iterator iter2 = hook_nodes.end();
-				iter2--;
-				iter2--;
-				if (!release_window && dist2(*iter2, hook_nodes.back()) < NODE_MIN_DISTANCE) {
-					std::cout << "Node deleted hook end\n";
-					//hook_nodes.erase(--iter2.base());
-					hook_nodes.erase(iter2);
-				}
-			}
-
-			if (hook_nodes.size() > 2) {
-				unwrap_rope();
-			}
-			wrap_rope();
-
-			hook.update(ts);
-			// TODO: confirm if this copies in-place (maybe)
-			hook_nodes.front() = position;
-			hook_nodes.back() = hook.get_position();
+			release_window = 0;
 		}
+
+		if (!hook.stuck) {
+			// reverse iterators are confusing
+			//std::list<Vec2>::reverse_iterator iter2 = hook_nodes.rbegin();
+			//iter2++; // .back()
+			std::list<Vec2>::iterator iter2 = hook_nodes.end();
+			iter2--;
+			iter2--;
+			if (!release_window && dist2(*iter2, hook_nodes.back()) < NODE_MIN_DISTANCE) {
+				std::cout << "Node deleted hook end\n";
+				//hook_nodes.erase(--iter2.base());
+				hook_nodes.erase(iter2);
+			}
+		}
+
+		if (hook_nodes.size() > 2) {
+			unwrap_rope();
+		}
+		wrap_rope();
+
+		hook.update(ts);
+		// TODO: confirm if this copies in-place (maybe)
+		hook_nodes.front() = position;
+		hook_nodes.back() = hook.get_position();
 	}
-	return;
 
 }
 

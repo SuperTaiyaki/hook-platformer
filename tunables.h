@@ -15,3 +15,6 @@
 
 // When the hook nodes get deleted
 #define NODE_MIN_DISTANCE (5*5)
+
+// Distance to add to player collision point (player size, effectively)
+#define COLLISION_RANGE 10

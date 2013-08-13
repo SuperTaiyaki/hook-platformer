@@ -11,7 +11,8 @@ class World;
 class Player {
 	public:
 		// Do velocity and f_accum get zeroed...?
-		Player(float x, float y, World &w): position(x, y), world(w), hook(w), pull(0) {};
+		Player(float x, float y, World &w): position(x, y), world(w), hook(w),
+			pull(0), bounce(0) {};
 		~Player();
 
 		void update(float timestep);
@@ -30,6 +31,7 @@ class Player {
 		Vec2 velocity;
 		Vec2 target_velocity;
 		Vec2 f_accum;
+		Line *contact_surface;
 		World &world;
 
 		Hook hook;

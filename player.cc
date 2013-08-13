@@ -124,12 +124,13 @@ void Player::merge_movement(float ts) {
 		return;
 	}
 	
-	Vec2 dir = target_velocity - velocity;
-	float len = hypot(dir);
-	if (len > ts * PLAYER_ACCELERATION) {
-		dir *= (ts*PLAYER_ACCELERATION) / len;
+	// On ground, no vertical control (jump is separate)
+	float diff = target_velocity.x - velocity.x;
+	if (fabs(diff) > ts * PLAYER_ACCELERATION) {
+		// one-dimensional... 
+		diff = copysign(ts*PLAYER_ACCELERATION, diff);
 	}
-	velocity += dir;
+	velocity.x += diff;
 
 #endif
 }
@@ -137,16 +138,37 @@ void Player::merge_movement(float ts) {
 void Player::update(float ts) {
 
 	merge_movement(ts);
-	
+
 	velocity.y -= GRAVITY * ts;
 	velocity += f_accum * ts;
 	f_accum.x = f_accum.y = 0;
 
 	if (velocity.x || velocity.y) {
+		Vec2 velocity_n = velocity;
+		velocity_n.normalize();
+		// Collision vector is radius of player + movement for next frame
+		// TODO: this doesn't actually work right, because the direction is wrong
+		// Maybe project 2 vectors, COLLISION_RANGE apart, parallel to the actual movement vector
 		Vec2 next_pos = position + velocity * ts;
+		next_pos += velocity_n * COLLISION_RANGE;
 		Line movement(position, next_pos);
 
-		std::auto_ptr<Line> collision = world.collide_line(movement);
+		// Hrm, this might lead to weirdness if there's a protrusion narrower than COLLISION_RANGE...
+
+		// Issue: Slamming into a surface -> want to position at collision_point - (normal*radius)
+		// Moving along a surface -> don't want to sap velocity, so want to be at finishing_point, adjusted to
+		// be outside the surface
+		Vec2 offset(0, 0);
+		std::auto_ptr<std::pair<Line, Vec2> > collision = world.collide_line(movement);
+		if (!collision.get()) {
+			offset = Vec2(-velocity_n.y, velocity_n.x);
+			offset *= COLLISION_RANGE/2.0f;
+			collision = world.collide_line(Line(position + offset, next_pos + offset));
+		}
+		if (!collision.get()) {
+			offset *= -1;
+			collision = world.collide_line(Line(position + offset, next_pos + offset));
+		}
 
 		// Continous collision physics
 		onground = 0;
@@ -154,15 +176,25 @@ void Player::update(float ts) {
 			//print_line("Collision ", *collision);
 			// Vector rejection -> sliding!
 			if (bounce) {
-				vec2_bounce(*collision, velocity);
+				vec2_bounce(collision->first, velocity);
 				// TODO: Cut or cap velocity
+				// TODO: adjust position a bit to account for distance covered before and after the
+				// bounce
 			} else {
 				float vy_before = velocity.y;
-				Vec2 collision_angle = Vec2(collision->y2 - collision->y1,
-						collision->x2 - collision->x1);
+				// No need to account for offset, because all the vectors are parallel
+				Vec2 collision_angle = Vec2(collision->first.y2 - collision->first.y1,
+						collision->first.x2 - collision->first.x1);
 				velocity = vec2_reject(velocity, collision_angle);
 
-				// TODO: bump right up against the surface
+				// Push back from the collision point by COLLISION_RANGE
+				Vec2 normal(collision->first.y1 - collision->first.y2,
+						collision->first.x2 - collision->first.x1);
+				normal.normalize(); //normalized vector normal
+
+				// TODO: 
+				position = collision->second - normal * COLLISION_RANGE;
+				//position -= offset;
 				// Not going to work quite right with non-perpendicular geometry
 				if (vy_before < 0 && velocity.y == 0) {
 					onground = 1;
@@ -172,7 +204,6 @@ void Player::update(float ts) {
 				velocity -= velocity*1*ts;
 			}
 		}
-
 		position += velocity * ts;
 
 	}

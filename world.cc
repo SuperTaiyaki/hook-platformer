@@ -29,7 +29,7 @@ void World::update(float timestep) {
 	return;
 }
 
-std::auto_ptr<Line> World::collide_line(const Line &line) const {
+std::auto_ptr<std::pair<Line, Vec2> > World::collide_line(const Line &line) const {
 	return stage->collide_line(line);
 }
 

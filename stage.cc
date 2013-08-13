@@ -77,6 +77,7 @@ void Stage::generate_border() {
 	// Left
 	geometry.push_back(new Rect(bounds.x1 - BORDER_WIDTH, bounds.y1,
 				bounds.x1, bounds.y2));
+	// Right
 	geometry.push_back(new Rect(bounds.x2, bounds.y1,
 				bounds.x2 + BORDER_WIDTH, bounds.y2));
 	// Top
@@ -88,16 +89,21 @@ std::auto_ptr<std::vector<Line> > Stage::block_borders(Rect &in) const{
 	std::auto_ptr<std::vector<Line> > ret(new std::vector<Line>);
 	ret->reserve(4); //Not using C++11...
 	// This is probably not the most efficient way to load the array, but they're fairly small
+	// Generate anti-clockwise so normals can be generated consistently
+	// Bottom
 	ret->push_back(Rect(in.x1, in.y1, in.x2, in.y1));
-	ret->push_back(Rect(in.x1, in.y2, in.x2, in.y2));
+	// Top
+	ret->push_back(Rect(in.x2, in.y2, in.x1, in.y2));
 
-	ret->push_back(Rect(in.x1, in.y1, in.x1, in.y2));
+	// Left
+	ret->push_back(Rect(in.x1, in.y2, in.x1, in.y1));
+	//Right
 	ret->push_back(Rect(in.x2, in.y1, in.x2, in.y2));
 
 	return ret;
 }
 
-std::auto_ptr<Line> Stage::collide_line(const Line &other) const {
+std::auto_ptr<std::pair<Line, Vec2> > Stage::collide_line(const Line &other) const {
 
 	for (std::list<Rect *>::const_iterator iter = geometry.begin();
 			iter != geometry.end(); iter++) {
@@ -107,12 +113,14 @@ std::auto_ptr<Line> Stage::collide_line(const Line &other) const {
 				liter != lines->end(); liter++) {
 			std::auto_ptr<Vec2> point = line_collision(other, *liter);
 			if (point.get()) {
-				return std::auto_ptr<Line>(new Line(*liter));
+				// Uhh... stick point and line together in a new autoed pair
+				return std::auto_ptr<std::pair<Line, Vec2> >
+					(new std::pair<Line, Vec2>(*liter, *point));
 			}
 		}
 		lines.reset();
 	}
-	return std::auto_ptr<Line>();
+	return std::auto_ptr<std::pair<Line, Vec2> >();
 }
 
 // For each block in the geometry, run a line collision

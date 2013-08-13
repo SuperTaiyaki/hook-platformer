@@ -16,8 +16,8 @@ class Stage {
 
 		const Rect &get_bounds() const;
 		const Vec2 &get_origin() const;
-
-		std::auto_ptr<Line> collide_line(const Line &in) const;
+		// line impact and collision point
+		std::auto_ptr<std::pair<Line, Vec2> > collide_line(const Line &in) const;
 		std::auto_ptr<Vec2> collide_corner(const Line &in) const;
 	private:
 

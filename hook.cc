@@ -36,12 +36,15 @@ void Hook::update(float ts) {
 		Vec2 next_pos = position + velocity * ts;
 		Line movement(position, next_pos);
 
-		std::auto_ptr<Line> collision = world.collide_line(movement);
+		std::auto_ptr<std::pair<Line, Vec2> > collision = world.collide_line(movement);
 		if (!retracting && collision.get()) {
+			// TODO: low angle hook bounce, etc.
 			//vec2_bounce(*collision, velocity);
 			std::cout << "Hook caught\n";
 			stuck = 1;
 			velocity.x = velocity.y = 0;
+			// 0.001 is arbitrary, the coordinate needs to be outside the surface
+			position = collision->second - velocity * 0.001;
 			return;
 		}
 

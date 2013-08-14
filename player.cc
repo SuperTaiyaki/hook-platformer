@@ -297,7 +297,6 @@ void Player::update_hook(float ts) {
 	wrap_rope();
 
 	hook.update(ts);
-	// TODO: confirm if this copies in-place (maybe)
 	hook_nodes.front() = position;
 	hook_nodes.back() = hook.get_position();
 

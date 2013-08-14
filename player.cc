@@ -233,53 +233,68 @@ void Player::update_hook(float ts) {
 		std::cout << "Short range deleted\n";
 		hook.deactivate();
 		hook_nodes.clear();
-	} else {
-		if (pull) {
-			rope_retract(ts);
-		}
-		if (hook.stuck) {
-			rope_brake();
-		}
-		std::list<Vec2>::iterator iter = hook_nodes.begin();
-		iter++;
-		if (dist2(hook_nodes.front(), *iter) < NODE_MIN_DISTANCE) {
-			if (!release_window) {
-				std::cout << "Node deleted player end\n";
-				hook_nodes.erase(iter);
-			}
-			if (hook_nodes.size() < 2) {
-				std::cout << "Deleted last node!\n";
-				// actually an error condition
-			}
-		} else {
-			release_window = 0;
-		}
-
-		if (!hook.stuck) {
-			// reverse iterators are confusing
-			//std::list<Vec2>::reverse_iterator iter2 = hook_nodes.rbegin();
-			//iter2++; // .back()
-			std::list<Vec2>::iterator iter2 = hook_nodes.end();
-			iter2--;
-			iter2--;
-			if (!release_window && dist2(*iter2, hook_nodes.back()) < NODE_MIN_DISTANCE) {
-				std::cout << "Node deleted hook end\n";
-				//hook_nodes.erase(--iter2.base());
-				hook_nodes.erase(iter2);
-			}
-		}
-
-		if (hook_nodes.size() > 2) {
-			unwrap_rope();
-		}
-		wrap_rope();
-
-		hook.update(ts);
-		// TODO: confirm if this copies in-place (maybe)
-		hook_nodes.front() = position;
-		hook_nodes.back() = hook.get_position();
+		return;
 	}
 
+	if (pull) {
+		rope_retract(ts);
+	}
+	if (hook.stuck) {
+		rope_brake();
+	}
+	std::list<Vec2>::iterator iter = hook_nodes.begin();
+	iter++;
+	if (dist2(hook_nodes.front(), *iter) < NODE_MIN_DISTANCE) {
+		if (!release_window) {
+			std::cout << "Node deleted player end\n";
+			hook_nodes.erase(iter);
+		}
+		if (hook_nodes.size() < 2) {
+			std::cout << "Deleted last node!\n";
+			// actually an error condition
+		}
+	} else {
+		release_window = 0;
+	}
+
+	if (!hook.stuck) {
+		// reverse iterators are confusing
+		//std::list<Vec2>::reverse_iterator iter2 = hook_nodes.rbegin();
+		//iter2++; // .back()
+		std::list<Vec2>::iterator iter2 = hook_nodes.end();
+		iter2--;
+		iter2--;
+		if (!release_window && dist2(*iter2, hook_nodes.back()) < NODE_MIN_DISTANCE) {
+			std::cout << "Node deleted hook end\n";
+			//hook_nodes.erase(--iter2.base());
+			hook_nodes.erase(iter2);
+		}
+	}
+
+	if (hook_nodes.size() > 2) {
+		unwrap_rope();
+	}
+	wrap_rope();
+
+	hook.update(ts);
+	// TODO: confirm if this copies in-place (maybe)
+	hook_nodes.front() = position;
+	hook_nodes.back() = hook.get_position();
+
+	// Length limiting
+	float length = 0;
+
+	std::list<Vec2>::const_iterator i = hook_nodes.begin();
+	const Vec2 *last = &(*i);
+	for (;i != hook_nodes.end();++i) {
+		length += hypot(*i - *last);
+		last = &(*i);
+	}
+	if (length > ROPE_LENGTH) {
+		// requires that the hook is still active
+		// The only deactivation condition is running out of length, which is checked first off
+		trigger(0, 0);
+	}
 }
 
 void Player::wrap_rope() {

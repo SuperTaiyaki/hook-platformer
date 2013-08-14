@@ -65,19 +65,18 @@ void render() {
 	} else if (key_states[UP]) {
 		y = 1.0f;
 	}
+	// Get mouse pos into world coordinates
+	float screen_coords[2];
+	screen_coords[0] = (float)mouse_pos[0] / window_size[0];
+	// Y is inverted in screen -> world
+	screen_coords[1] = (float)(window_size[1] - mouse_pos[1]) / window_size[1];
+	const Rect &viewport = world->get_viewport();
+	float world_coords[2];
+	world_coords[0] = viewport.x1 + (viewport.x2 - viewport.x1) * screen_coords[0];
+	world_coords[1] = viewport.y1 + (viewport.y2 - viewport.y1) * screen_coords[1];
 
-	// TODO: edge trigger, not level trigger
 	if (key_states[FIRE] && not key_last_state[FIRE]) {
-		// Get it into world coordinates
-		float screen_coords[2];
-		screen_coords[0] = (float)mouse_pos[0] / window_size[0];
-		// Y is inverted in screen -> world
-		screen_coords[1] = (float)(window_size[1] - mouse_pos[1]) / window_size[1];
-		const Rect &viewport = world->get_viewport();
-		float world_coords[2];
-		world_coords[0] = viewport.x1 + (viewport.x2 - viewport.x1) * screen_coords[0];
-		world_coords[1] = viewport.y1 + (viewport.y2 - viewport.y1) * screen_coords[1];
-		player->trigger(world_coords[0], world_coords[1]);
+			player->trigger(world_coords[0], world_coords[1]);
 	}
 	key_last_state[FIRE] = key_states[FIRE];
 
@@ -85,7 +84,11 @@ void render() {
 	player->retract(key_states[RETRACT]);
 	player->jump(key_states[JUMP]);
 
+	// TODO: smooth this over a few frames
+	world->set_focus(world_coords[0], world_coords[1]);
+
 	world->update(timestep);
+
 
 	renderer->draw();
 
@@ -160,6 +163,8 @@ void mousebutton(int button, int state, int x, int y) {
 }
 
 void mousemotion(int x, int y) {
+	mouse_pos[0] = x;
+	mouse_pos[1] = y;
 	return;
 }
 

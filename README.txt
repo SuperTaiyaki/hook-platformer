@@ -1,0 +1,34 @@
+Requirements:
+OpenGL libraries
+FreeGLUT and GLEW
+Python > 2.6 (for editing levels only)
+
+Tested with:
+-FreeGLUT 2.8.1
+-GLEW 1.10.0
+-gcc/g++ 4.8.1
+under Arch Linux (x86_64)
+
+Building:
+if SConstruct is available:
+$ scons
+Otherwise, just building all the .cc files and linking with GL, freeglut and
+GLEW should do it.
+
+I suspect this will build fine under Windows, but I'm not set up to find out.
+
+Controls:
+WASD/,AOE (dvorak) for movement.
+Space for jump. Holding it will cause the player to bounce on any impact.
+Left mouse to fire the hook towards the mouse cursor. Left mouse again to retract.
+If the hook has connected to something, hold right mouse to pull it in.
+r to reset the level
+
+Both stages can be completed in under 30 seconds.
+
+Editing levels:
+Stages are SVG, processed with convert_svg.py . Only rectangular geometry
+(<rect> nodes) are permitted. A node with id 'goal' and 'border' (the outside
+bounds of the stage - where the player falls out of the level) are required. A
+text node with text 'start' indicates the player start position.
+

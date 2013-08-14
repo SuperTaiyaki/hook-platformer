@@ -38,7 +38,6 @@ void Stage::load_stage(const char *filename) {
 						bounds = Rect(x1, y1, x2, y2);
 						break;
 					case 'g':
-						std::cout << "Created goal\n";
 						goal = Rect(x1, y1, x2, y2);
 						break;
 					default:

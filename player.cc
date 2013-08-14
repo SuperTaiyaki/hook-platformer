@@ -28,6 +28,13 @@ void Player::reset(const Vec2 &origin) {
 	return;
 }
 
+Player::~Player() {
+	if (contact_surface) {
+		delete contact_surface;
+		contact_surface = NULL;
+	}
+}
+
 const Vec2 &Player::node_2() const {
 	std::list<Vec2>::const_iterator iter= hook_nodes.begin();
 	iter++;

@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <iostream>
+#include <cstring>
 
 #include <GL/glew.h>
 #include <GL/freeglut.h>
@@ -14,10 +15,10 @@
 #define WINDOW_HEIGHT 768
 
 // global so the GLUT callbacks can get to them
-Renderer *renderer;
-World *world;
-Player *player;
-Stage *stage;
+Renderer *renderer = NULL;
+World *world = NULL;
+Player *player = NULL;
+Stage *stage = NULL;
 
 enum Keys {
 	LEFT,
@@ -34,6 +35,40 @@ bool key_states[LAST_KEY];
 bool key_last_state[LAST_KEY];
 int mouse_pos[2];
 int window_size[2] = {WINDOW_WIDTH, WINDOW_HEIGHT};
+
+void menu();
+void render();
+
+void game_init(const char *filename) {
+	world = new World();
+	stage = new Stage(filename);
+	world->set_stage(stage);
+	const Vec2 &player_origin = stage->get_origin();
+	player = new Player(player_origin.x, player_origin.y, *world);
+	world->set_player(player);
+	// populate world as necessary
+	renderer = new Renderer(world);
+	return;
+}
+
+void game_cleanup() {
+	if (renderer) {
+		delete renderer;
+		renderer = NULL;
+	}
+	if (world) {
+		delete world;
+		world = NULL;
+	}
+	if (player) {
+		delete player;
+		player = NULL;
+	}
+	if (stage) {
+		delete stage;
+		stage = NULL;
+	}
+}
 
 //Do all the ugly GLUT stuff here because the callbacks don't allow passing around arguments
 
@@ -64,14 +99,14 @@ void process_input() {
 	if (key_states[FIRE] && not key_last_state[FIRE]) {
 			player->trigger(world_coords[0], world_coords[1]);
 	}
-	key_last_state[FIRE] = key_states[FIRE];
 
 	player->control(x, y);
 	player->retract(key_states[RETRACT]);
 	player->jump(key_states[JUMP]);
 
 	world->set_focus(world_coords[0], world_coords[1]);
-
+	
+	std::memcpy(key_last_state, key_states, sizeof(key_states));
 }
 
 void render() {
@@ -80,6 +115,7 @@ void render() {
 		world->reset();
 	}
 
+	glClearColor(0.8f, 0.8f, 0.8f, 1.0f);
 	glClear(GL_COLOR_BUFFER_BIT);
 
 	static int last_msec = 0;
@@ -128,6 +164,11 @@ Keys key_map(int key) {
 }
 
 void keyboard(unsigned char key, int x, int y) {
+	if (key == 27) {// escape
+		game_cleanup();
+		glutDisplayFunc(menu);
+		return;
+	}
 	int keysym = key_map(key);
 	if (keysym == LAST_KEY) {
 		return;
@@ -180,11 +221,70 @@ void mousemotion(int x, int y) {
 }
 
 void resize(int width, int height) {
-	world->set_aspect_ratio((float)width/(float)height);
+	// this can hit during menu
+	if (world) {
+		world->set_aspect_ratio((float)width/(float)height);
+	}
 	window_size[0] = width;
 	window_size[1] = height;
 	std::cout << "New width: " << width << " New height: " << height << "\n";
 }
+
+// Quick and dirty menu... running out of time
+// Completely not currenty opengl!
+void menu() {
+	glClearColor(0, 0, 0, 0);
+	glClear(GL_COLOR_BUFFER_BIT);
+	static const char *filenames[] = {
+		"st1.stg",
+		"st2.stg"};
+
+#define MENU_ENTRIES 3
+	static const char menu[] = 
+		"Stage 1\n"
+		"Stage 2\n"
+		"Exit\n";
+
+	static int selected = 0;
+
+	if (key_states[DOWN] && !key_last_state[DOWN]) {
+		selected++;
+	}
+	if (key_states[UP] && !key_last_state[UP]) {
+		selected--;
+	}
+	if (key_states[JUMP] && !key_last_state[JUMP]) {
+		if (selected == MENU_ENTRIES - 1) {
+			glutLeaveMainLoop();
+			return;
+		}
+		game_init(filenames[selected]);
+		glutDisplayFunc(render);
+	}
+	selected %= MENU_ENTRIES;
+
+	glRasterPos2f(-0.8f, 0.6f);
+
+	// Apparently freeGLUT bitmap fonts can't be coloured
+	for (int i = 0;i < MENU_ENTRIES;i++) {
+		if (selected == i) {
+			glutBitmapString(GLUT_BITMAP_9_BY_15, (unsigned char*)"> \n");
+		} else {
+			glutBitmapString(GLUT_BITMAP_9_BY_15, (unsigned char*)"  \n");
+		}
+	}
+	glRasterPos2f(-0.7f, 0.6f);
+
+	glutBitmapString(GLUT_BITMAP_9_BY_15, (unsigned char*)menu);
+
+
+	glutSwapBuffers();
+	glutPostRedisplay();
+
+	std::memcpy(key_last_state, key_states, sizeof(key_states));
+	return;
+}
+
 
 // yes, this breaks the semantics of argc and argv...
 void osd_init(int argc, char *argv[]) {
@@ -212,7 +312,8 @@ void osd_init(int argc, char *argv[]) {
 		exit(EXIT_FAILURE);
 	}
 
-	glutDisplayFunc(render);
+	//glutDisplayFunc(render);
+	glutDisplayFunc(menu);
 	glutMouseFunc(mousebutton);
 	glutMotionFunc(mousemotion);
 	glutPassiveMotionFunc(mousemotion);
@@ -224,22 +325,11 @@ void osd_init(int argc, char *argv[]) {
 
 }
 
+
+
 int main(int argc, char *argv[]) {
 	osd_init(argc, argv);
-
-	world = new World();
-	if (argc == 1) {
-		stage = new Stage("test1.stg");
-	} else {
-		stage = new Stage(argv[1]);
-	}
-	world->set_stage(stage);
-	const Vec2 &player_origin = stage->get_origin();
-	player = new Player(player_origin.x, player_origin.y, *world);
-	world->set_player(player);
-	// populate world as necessary
-	renderer = new Renderer(world);
-
+	
 	glutMainLoop();
 	return EXIT_SUCCESS;
 }

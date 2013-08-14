@@ -14,6 +14,9 @@ World::World():
 	return;
 }
 
+World::~World() {
+}
+
 const Rect &World::get_viewport() const{
 	return viewport;
 }

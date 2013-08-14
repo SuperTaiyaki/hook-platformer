@@ -327,7 +327,8 @@ void Player::wrap_rope() {
 		hook_nodes.insert(iter, *collision);
 		rope_angle_player = node_angle(hook_nodes.begin());
 		/*std::cout << "Collided is now " << hook_nodes.size() << " points\n";
-		*/std::cout << "Angle: " << rope_angle_player << "\n";
+		std::cout << "Angle: " << rope_angle_player << "\n";
+		*/
 	}
 }
 
@@ -379,8 +380,9 @@ void Player::control(float x, float y) {
 }
 
 void Player::jump(int value) {
-	if (contact_surface) {
-		target_velocity.y = 10000;
+	if (value && contact_surface) {
+		//Axis-aligned surfaces only. Should actually be surface normal
+		velocity.y = 300;
 	} else {
 		// I'm kind of surprised gcc doesn't say anything about the type mismatch...
 		bounce = value;

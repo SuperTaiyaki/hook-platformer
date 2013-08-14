@@ -15,13 +15,16 @@ class Stage {
 		const std::list<Rect*> &get_geometry() const;
 
 		const Rect &get_bounds() const;
+		const Rect &get_goal() const;
 		const Vec2 &get_origin() const;
+		int at_goal(const Vec2 &position) const;
 		// line impact and collision point
 		std::auto_ptr<std::pair<Line, Vec2> > collide_line(const Line &in) const;
 		std::auto_ptr<Vec2> collide_corner(const Line &in) const;
 	private:
 
 		Rect bounds;
+		Rect goal;
 		std::list<Rect*> geometry;
 		Vec2 origin;
 

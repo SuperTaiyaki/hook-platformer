@@ -40,7 +40,6 @@ void Hook::update(float ts) {
 		if (!retracting && collision.get()) {
 			// TODO: low angle hook bounce, etc.
 			//vec2_bounce(*collision, velocity);
-			std::cout << "Hook caught\n";
 			stuck = 1;
 			velocity.x = velocity.y = 0;
 			// 0.001 is arbitrary, the coordinate needs to be outside the surface

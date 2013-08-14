@@ -9,6 +9,25 @@
 
 #include "tunables.h"
 
+void Player::reset(const Vec2 &origin) {
+
+	velocity.x = velocity.y = 0;
+	target_velocity.x = target_velocity.y = 0;
+	f_accum.x = f_accum.y = 0;
+	if (contact_surface) {
+		delete contact_surface;
+		contact_surface = NULL;
+	}
+	position = origin;
+
+	hook.deactivate();
+	hook_nodes.clear();
+
+	release_window = pull = bounce = 0;
+
+	return;
+}
+
 const Vec2 &Player::node_2() const {
 	std::list<Vec2>::const_iterator iter= hook_nodes.begin();
 	iter++;
@@ -21,7 +40,10 @@ void Player::rope_retract(float ts) {
 		const Vec2 &pull_point = node_2();
 		Vec2 rope_vec = pull_point - position;
 		rope_vec.normalize();
-		push(rope_vec.x * PULL_FORCE, rope_vec.y * PULL_FORCE);
+		float pull_speed = vec2_project(velocity, rope_vec);
+		if (pull_speed < PULL_MAX_SPEED) {
+			push(rope_vec.x * PULL_FORCE, rope_vec.y * PULL_FORCE);
+		}
 		// TODO: cap the max speed
 	} else { // hook being retracted
 		// Given that this is basically cosmetic, it's a lot of work!
@@ -179,7 +201,9 @@ void Player::check_collisions(float ts) {
 					contact_surface = NULL;
 				} else {
 					// axis-aligned cheat...
-					velocity.y += GRAVITY * ts;
+					if (velocity.y < 0)
+						velocity.y = 0;
+					//velocity.y += GRAVITY * ts;
 				}
 			}
 			// not _else_ because the above can delete it
@@ -218,7 +242,6 @@ void Player::check_collisions(float ts) {
 		}
 	} else {
 		if (contact_surface) {
-			std::cout << "No collision, removing surface\n";
 			delete contact_surface;
 			contact_surface = NULL;
 		}
@@ -230,7 +253,6 @@ void Player::update_hook(float ts) {
 	// Trim excess nodes first
 	if (!release_window && hook_nodes.size() == 2 &&
 			dist2(*hook_nodes.begin(), node_2()) < NODE_MIN_DISTANCE) {
-		std::cout << "Short range deleted\n";
 		hook.deactivate();
 		hook_nodes.clear();
 		return;
@@ -246,7 +268,6 @@ void Player::update_hook(float ts) {
 	iter++;
 	if (dist2(hook_nodes.front(), *iter) < NODE_MIN_DISTANCE) {
 		if (!release_window) {
-			std::cout << "Node deleted player end\n";
 			hook_nodes.erase(iter);
 		}
 		if (hook_nodes.size() < 2) {
@@ -265,7 +286,6 @@ void Player::update_hook(float ts) {
 		iter2--;
 		iter2--;
 		if (!release_window && dist2(*iter2, hook_nodes.back()) < NODE_MIN_DISTANCE) {
-			std::cout << "Node deleted hook end\n";
 			//hook_nodes.erase(--iter2.base());
 			hook_nodes.erase(iter2);
 		}
@@ -307,30 +327,9 @@ void Player::wrap_rope() {
 	if (collision.get()) {
 		hook_nodes.insert(iter, *collision);
 		rope_angle_player = node_angle(hook_nodes.begin());
-		std::cout << "Collided is now " << hook_nodes.size() << " points\n";
-		std::cout << "Angle: " << rope_angle_player << "\n";
+		/*std::cout << "Collided is now " << hook_nodes.size() << " points\n";
+		*/std::cout << "Angle: " << rope_angle_player << "\n";
 	}
-
-	// Geometry isn't mobile, so only the first and last segments can actually move
-/*	Vec2 *last_node = NULL;
-	for (std::list<Vec2>::iterator iter = hook_nodes.begin();
-			iter != hook_nodes.end(); iter++) {
-		if (!last_node) {
-			last_node = &*iter;
-			continue;
-		}
-
-		Line segment(*last_node, *iter);
-		Vec2 *collision = world.collide_corner(segment);
-		if (collision) {
-			hook_nodes.insert(iter, *collision);
-			delete collision;
-		} else {
-			last_node = &*iter;
-		}
-
-	}
-*/
 }
 
 // Calculate the angle between the next 3 nodes under the iterator
@@ -394,12 +393,9 @@ void Player::trigger(float x, float y) {
 		hook.release();
 		// pull in hook
 		pull = 1;
-		std::cout << "Retract!\n";
 		hook.velocity.x = 0;
 		hook.velocity.y = 0;
 	} else {
-		std::cout << "Fire!\n";
-		print_vec2("Player", position);
 		Vec2 aim(x, y);
 		hook.launch(position, aim - position);
 		hook_nodes.push_back(position);

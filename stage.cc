@@ -17,8 +17,7 @@ Stage::Stage(): bounds(Rect(-STAGE_WIDTH/2.0f, 0.0f, STAGE_WIDTH/2.0f, STAGE_HEI
 	return;
 }
 
-Stage::Stage(const char *filename):
-	bounds(Rect(-STAGE_WIDTH/2.0f, 0.0f, STAGE_WIDTH/2.0f, STAGE_HEIGHT)){
+Stage::Stage(const char *filename) {
 	load_stage(filename);
 }
 
@@ -29,13 +28,22 @@ void Stage::load_stage(const char *filename) {
 	file >> type;
 	while (type) {
 		switch(type) {
-			case 'b':
+			case 'r':
 				float x1, y1, x2, y2;
 				file >> x1 >> y1 >> x2 >> y2;
 				char flags;
 				file >> flags;
-				geometry.push_back(new Rect(x1, y1, x2, y2));
-				std::cout << "Added block\n";
+				switch(flags) {
+					case 'b':
+						bounds = Rect(x1, y1, x2, y2);
+						break;
+					case 'g':
+						std::cout << "Created goal\n";
+						goal = Rect(x1, y1, x2, y2);
+						break;
+					default:
+						geometry.push_back(new Rect(x1, y1, x2, y2));
+				}
 				break;
 			case 'p':
 				float x, y;
@@ -177,7 +185,10 @@ std::auto_ptr<Vec2> Stage::collide_corner(const Line &other) const {
 	return ret;
 
 }
-
+int Stage::at_goal(const Vec2 &position) const {
+	return (position.x > goal.x1 && position.x < goal.x2 &&
+			position.y > goal.y1 && position.y < goal.y2);
+}
 const std::list<Rect*> &Stage::get_geometry() const {
 	return geometry;
 }
@@ -185,6 +196,11 @@ const std::list<Rect*> &Stage::get_geometry() const {
 const Rect &Stage::get_bounds() const {
 	return bounds;
 }
+
+const Rect &Stage::get_goal() const {
+	return goal;
+}
+
 
 const Vec2 &Stage::get_origin() const {
 	return origin;

@@ -15,6 +15,7 @@ class Renderer {
 	private:
 		World *world;
 
+		void generate_tris(const Rect &rect, GLfloat *vertices);
 		void init_geometry();
 		void draw_stage();
 

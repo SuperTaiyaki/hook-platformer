@@ -17,6 +17,7 @@ class Player {
 
 		void update(float timestep);
 		void push(float x, float y);
+		void reset(const Vec2 &origin);
 
 		// Float for analog control... maybe
 		void control(float x, float y);
@@ -38,9 +39,7 @@ class Player {
 
 		std::list<Vec2> hook_nodes;
 		float rope_angle_player;
-		float rope_angle_hook;
-
-		float node_angle(std::list<Vec2>::const_iterator iter) const;
+		float rope_angle_hook; //unused for now
 
 		// flags
 		unsigned int release_window :1;
@@ -56,6 +55,10 @@ class Player {
 		void update_hook(float ts);
 
 		const Vec2 &node_2() const; // 2nd node in the list
+
+		// angle between the next 3 nodes in the list
+		float node_angle(std::list<Vec2>::const_iterator iter) const;
+
 };
 
 #endif // __player_h__

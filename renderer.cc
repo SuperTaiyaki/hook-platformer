@@ -2,6 +2,7 @@
 #include <vector>
 #include <stdio.h>
 #include <GL/glew.h>
+#include <GL/freeglut.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -13,7 +14,7 @@ std::vector<Vec2> dots;
 
 Renderer::Renderer(World *w): world(w) {
 
-	glClearColor(0.5f, 0.5f, 0.5f, 1.0f);
+	glClearColor(0.8f, 0.8f, 0.8f, 1.0f);
 
 	init_shaders();
 	init_geometry();
@@ -68,7 +69,14 @@ void Renderer::draw() {
 	draw_rope();
 
 	draw_dots();
-	
+
+	// Also not valid opengl 3.1
+	// but setting up text rendering would be time consuming
+	glRasterPos2f(-0.90f, 0.90f);
+	unsigned char buffer[20]; //ugh, why is glutBitmap... uchar*
+	sprintf((char *)buffer, "%0.2f", world->get_timer());
+	glutBitmapString(GLUT_BITMAP_8_BY_13, buffer);
+
 	return;
 }
 
@@ -78,8 +86,36 @@ void Renderer::updateViewport(int x, int y) {
 
 void Renderer::draw_stage() {
 	glBindVertexArray(geometry_array);
+	// First block is the goal point
+	glUniform3f(color_uniform, 0, 0.8f, 0);
+	glDrawArrays(GL_TRIANGLES, 0, 6);
+
+	// Then the rest of them
+
 	glUniform3f(color_uniform, 0, 0, 0);
-	glDrawArrays(GL_TRIANGLES, 0, geometry_vertices);
+	glDrawArrays(GL_TRIANGLES, 6, geometry_vertices);
+}
+
+// Generate the 6 points for the box, write them into vertices
+void Renderer::generate_tris(const Rect &rect, GLfloat *vertices) {
+		// First triangle, top left, bottom left, bottom right
+		// 2nd triangle top right, top left, bottom right
+		/* 0,4 *----* 3
+		 *     |\   |
+		 *     |  \ |
+		 * 1   *----* 2,5
+		 */
+
+#define coord(vtx, y) (vertices[2*vtx + y*1])
+/*		vertices[2*0 + 0] = rect.x1;
+		vertices[2*5 + 0] = rect.x1 */
+		coord(0, 0) = coord(4, 0) = coord(1, 0) = rect.x1;
+		coord(3, 0) = coord(2, 0) = coord(5, 0) = rect.x2;
+		coord(1, 1) = coord(2, 1) = coord(5, 1) = rect.y1;
+		coord(0, 1) = coord(4, 1) = coord(3, 1) = rect.y2;
+#undef coord
+		return;
+
 }
 
 void Renderer::init_geometry() {
@@ -93,30 +129,17 @@ void Renderer::init_geometry() {
 	const std::list<Rect*> &geometry = stage.get_geometry();
 
 	// 6 vertices per box, x/y per vertex
-	geometry_vertices = geometry.size() * 6*2;
+	// +12 vertex for the goal point
+	geometry_vertices = (geometry.size()) * 6*2 + 12;
 	GLfloat *vertices = new GLfloat[geometry_vertices];
-	int box = 0;
+	int box = 1;
 	for (std::list<Rect *>::const_iterator iter = geometry.begin();
 		       	iter != geometry.end(); iter++) {
+		generate_tris(**iter, &vertices[box*12]);
 
-		// First triangle, top left, bottom left, bottom right
-		// 2nd triangle top right, top left, bottom right
-		/* 0,4 *----* 3
-		 *     |\   |
-		 *     |  \ |
-		 * 1   *----* 2,5
-		 */
-		Rect *rect = *iter;
-#define coord(vtx, y) (vertices[box*12 + 2*vtx + y*1])
-/*		vertices[box*12 + 2*0 + 0] = rect.x1;
-		vertices[box*12 + 2*5 + 0] = rect.x1 */
-		coord(0, 0) = coord(4, 0) = coord(1, 0) = rect->x1;
-		coord(3, 0) = coord(2, 0) = coord(5, 0) = rect->x2;
-		coord(1, 1) = coord(2, 1) = coord(5, 1) = rect->y1;
-		coord(0, 1) = coord(4, 1) = coord(3, 1) = rect->y2;
-#undef coord
 		box += 1;
 	}
+	generate_tris(stage.get_goal(), vertices);
 
 	glGenVertexArrays(1, &geometry_array);
 	glBindVertexArray(geometry_array);
@@ -144,7 +167,7 @@ void Renderer::draw_player() {
 	// Not using a Vec2 beacuse the vptr might make things messy
 	GLfloat *mmap = (GLfloat*)glMapBuffer(GL_ARRAY_BUFFER, GL_WRITE_ONLY);
 	mmap[0] = pos.x;
-	mmap[1] = pos.y; 
+	mmap[1] = pos.y;
 //	Vec2 *mmap = (Vec2*)glMapBuffer(GL_ARRAY_BUFFER, GL_WRITE_ONLY);
 //	*mmap = pos;
 	glUnmapBuffer(GL_ARRAY_BUFFER);

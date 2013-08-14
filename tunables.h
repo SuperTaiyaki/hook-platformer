@@ -1,4 +1,4 @@
-#define GRAVITY 500
+#define GRAVITY 400
 
 #define PLAYER_GROUND_SPEED 1000
 #define PLAYER_AIR_SPEED 100
@@ -9,6 +9,7 @@
 
 #define PULL_FORCE 3000
 #define RETRACT_FORCE 6000
+#define PULL_MAX_SPEED 1000
 
 // hook launch speed
 #define HOOK_SPEED 1000

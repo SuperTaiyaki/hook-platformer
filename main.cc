@@ -27,6 +27,7 @@ enum Keys {
 	JUMP,
 	FIRE,
 	RETRACT,
+	RESET,
 	LAST_KEY
 };
 bool key_states[LAST_KEY];
@@ -36,22 +37,7 @@ int window_size[2] = {WINDOW_WIDTH, WINDOW_HEIGHT};
 
 //Do all the ugly GLUT stuff here because the callbacks don't allow passing around arguments
 
-void render() {
-	glClear(GL_COLOR_BUFFER_BIT);
-
-	static int last_msec = 0;
-	int msec = glutGet(GLUT_ELAPSED_TIME);
-	// Stupid busy loop to make sure updates actually work... forced by timer resolution and other junk
-	while (msec == last_msec) {
-		msec = glutGet(GLUT_ELAPSED_TIME);
-	}
-	float timestep = (msec - last_msec) / 1000.0f;
-	last_msec = msec;
-	// For safety, cap the min framerate - don't break physics assumptions
-	if (timestep > 0.05) { // 20fps
-		timestep = 0.05;
-	}
-
+void process_input() {
 	// Input crunching
 	// Biased right and up
 	float x = 0, y = 0;
@@ -84,11 +70,34 @@ void render() {
 	player->retract(key_states[RETRACT]);
 	player->jump(key_states[JUMP]);
 
-	// TODO: smooth this over a few frames
 	world->set_focus(world_coords[0], world_coords[1]);
 
-	world->update(timestep);
+}
 
+void render() {
+
+	if (key_states[RESET] && !key_last_state[RESET]) {
+		world->reset();
+	}
+
+	glClear(GL_COLOR_BUFFER_BIT);
+
+	static int last_msec = 0;
+	int msec = glutGet(GLUT_ELAPSED_TIME);
+	// Stupid busy loop to make sure updates actually work... forced by timer resolution and other junk
+	while (msec == last_msec) {
+		msec = glutGet(GLUT_ELAPSED_TIME);
+	}
+	float timestep = (msec - last_msec) / 1000.0f;
+	last_msec = msec;
+	// For safety, cap the min framerate - don't break physics assumptions
+	if (timestep > 0.05) { // 20fps
+		timestep = 0.05;
+	}
+
+	process_input();
+
+	world->update(timestep);
 
 	renderer->draw();
 
@@ -112,6 +121,8 @@ Keys key_map(int key) {
 			return UP;
 		case ' ':
 			return JUMP;
+		case 'r':
+			return RESET;
 	}
 	return LAST_KEY;
 }

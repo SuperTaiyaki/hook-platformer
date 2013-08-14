@@ -35,6 +35,7 @@ class Rect {
 public:
 	Rect(float ix1, float iy1, float ix2, float iy2): x1(ix1), y1(iy1), x2(ix2), y2(iy2){};
 	Rect(const Vec2 &p1, const Vec2 &p2): x1(p1.x), y1(p1.y), x2(p2.x), y2(p2.y){};
+	Rect(){};
 	float x1, y1, x2, y2;
 	// Apparently unioning this to an array isn't valid C++ - it's never passed around as an array anyway.
 };
@@ -62,8 +63,6 @@ float hypot(const Line &segment);
 
 // Distance between points squared
 float dist2(const Vec2 &a, const Vec2 &b);
-
-
 
 void print_vec2(std::string prefix, const Vec2 &in);
 void print_line(std::string prefix, const Line &in);

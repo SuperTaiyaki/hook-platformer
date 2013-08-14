@@ -43,7 +43,6 @@ class Player {
 		float node_angle(std::list<Vec2>::const_iterator iter) const;
 
 		// flags
-		unsigned int onground :1;
 		unsigned int release_window :1;
 		unsigned int pull :1;
 		unsigned int bounce :1;

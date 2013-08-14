@@ -102,7 +102,7 @@ void Player::update(float ts) {
 	// if player is standing on a flat surface, don't let the rope pull them through it
 	if (contact_surface && f_accum.y < 0)
 		f_accum.y = 0;
-	
+
 	velocity += f_accum * ts;
 	f_accum.x = f_accum.y = 0;
 
@@ -141,7 +141,10 @@ void Player::check_collisions(float ts) {
 		collision = world.collide_line(Line(position + offset, next_pos + offset));
 	}
 
-	onground = 0;
+	// Another special case that hasn't been dealt with:
+	// This only accounts for a single collision per frame
+	// running at a wall therefore causes the ground tracking to be lost, and the player pops up a bit
+
 	if (collision.get()) {
 		// Special case
 		// If the player is sliding upwards or downwards on a vertical
@@ -345,7 +348,7 @@ void Player::unwrap_rope() {
 
 void Player::control(float x, float y) {
 #if 1
-	if (onground) {
+	if (contact_surface) {
 		target_velocity.y = 0;
 		target_velocity.x = x * PLAYER_GROUND_SPEED;
 	} else {
@@ -363,7 +366,7 @@ void Player::control(float x, float y) {
 }
 
 void Player::jump(int value) {
-	if (onground) {
+	if (contact_surface) {
 		target_velocity.y = 10000;
 	} else {
 		// I'm kind of surprised gcc doesn't say anything about the type mismatch...

@@ -212,7 +212,11 @@ int main(int argc, char *argv[]) {
 	osd_init(argc, argv);
 
 	world = new World();
-	stage = new Stage("test1.stg");
+	if (argc == 1) {
+		stage = new Stage("test1.stg");
+	} else {
+		stage = new Stage(argv[1]);
+	}
 	world->set_stage(stage);
 	const Vec2 &player_origin = stage->get_origin();
 	player = new Player(player_origin.x, player_origin.y, *world);
